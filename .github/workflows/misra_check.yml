@@ -28,6 +28,5 @@ jobs:
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
             --force \
-            -I examples \
             -DSTATIC_ANALYSIS=1 \
             examples
