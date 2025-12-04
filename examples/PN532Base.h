@@ -40,6 +40,27 @@ public:
     virtual bool getFirmwareVersion(uint32_t &version) = 0;
 
     /**
+     * @brief Send an APDU command to an ISO14443-4 compliant tag.
+     *
+     * Base method to allow APDU exchange with Type 4 NFC tags.
+     * Implementations may return false if the interface does not support APDUs.
+     *
+     * @param apdu Pointer to the APDU command data.
+     * @param apduLength Size of the APDU command.
+     * @param response Pointer to a buffer that will store the APDU response.
+     * @param responseLength Reference that receives the length of the response.
+     * @return true if the APDU was successfully exchanged, false otherwise.
+     */
+    virtual bool sendAPDU(const uint8_t* apdu, uint8_t apduLength,
+                          uint8_t* response, uint8_t &responseLength) = 0;
+
+    /**
+    * @brief Put the card in active ISO-DEP mode for APDU exchange.
+    * @return true if a card was successfully activated, false otherwise.
+    */
+    virtual bool inListPassiveTarget() = 0;
+
+    /**
      * @brief Virtual destructor.
      */
     virtual ~PN532Base() {}

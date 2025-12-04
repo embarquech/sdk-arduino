@@ -46,27 +46,49 @@ void setup() {
     }
 }
 
+void sendTestAPDU() {
+    uint8_t selectApdu[] = { 
+        0x00, 0xA4, 0x04, 0x00, 
+        0x07, 0xA0, 0x00, 0x00, 0x10, 0x00, 0x01, 0x12
+    };
+
+    uint8_t response[32];
+    uint8_t responseLength = sizeof(response);
+
+    Serial.println("Sending APDU...");
+
+    if (nfc->sendAPDU(selectApdu, sizeof(selectApdu), response, responseLength)) {
+        Serial.print("APDU Response (");
+        Serial.print(responseLength);
+        Serial.println(" bytes):");
+
+        for (uint8_t i = 0; i < responseLength; i++) {
+            Serial.print(" 0x");
+            Serial.print(response[i], HEX);
+        }
+        Serial.println();
+    } else {
+        Serial.println("APDU exchange failed!");
+    }
+}
+
 /**
  * @brief Arduino loop function.
  * 
  * Continuously checks for NFC cards, reads their UID, and prints it to Serial.
  */
 void loop() {
-    uint8_t uid[7];      /**< Buffer to store UID */
-    uint8_t uidLength;   /**< Length of UID read */
+    uint8_t uid[7];
+    uint8_t uidLength;
 
-    /** 
-     * @brief Check if an NFC card is present.
-     * 
-     * If a card is detected, print its UID in hexadecimal format.
-     */
-    if (nfc->readUID(uid, uidLength)) {
-        Serial.print("UID: ");
-        for (uint8_t i = 0; i < uidLength; i++) {
-            Serial.print(" 0x"); Serial.print(uid[i], HEX);
-        }
+    if (nfc->inListPassiveTarget()) {  /* ISO-DEP */
+        Serial.println("Card ISO-DEP detected, sending APDU...");
+        sendTestAPDU();
+    } else if (nfc->readUID(uid, uidLength)) { /* fallback MIFARE/NTAG */
+        Serial.print("Card UID: ");
+        for (int i = 0; i < uidLength; i++) Serial.print(uid[i], HEX);
         Serial.println();
     }
 
-    delay(1000); /**< Wait 1 second between reads */
+    delay(1000);
 }

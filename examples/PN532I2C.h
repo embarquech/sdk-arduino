@@ -49,6 +49,28 @@ public:
      */
     bool getFirmwareVersion(uint32_t &version) override;
 
+    /**
+     * @brief Send an APDU command to an ISO14443-4 (Type 4) NFC tag.
+     *
+     * @param apdu Pointer to the APDU buffer to send.
+     * @param apduLength Length of the APDU buffer.
+     * @param response Pointer to a buffer that will receive the response APDU.
+     * @param responseLength Reference to a variable that will contain the response length.
+     * @return true if the APDU exchange succeeded, false otherwise.
+     */
+    bool sendAPDU(const uint8_t* apdu, uint8_t apduLength,
+                  uint8_t* response, uint8_t &responseLength);
+
+    /**
+    * @brief Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange.
+    * 
+    * This function wraps the Adafruit PN532 `inListPassiveTarget()` method.
+    * It allows the PN532 to communicate with ISO-DEP (Type 4) cards.
+    * 
+    * @return true if a card was detected and successfully activated, false otherwise.
+    */
+    bool inListPassiveTarget() override;
+
 private:
     Adafruit_PN532 nfc; /**< Internal Adafruit PN532 object for I2C communication */
 };

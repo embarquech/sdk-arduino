@@ -54,3 +54,54 @@ bool PN532I2C::getFirmwareVersion(uint32_t &version) {
     version = nfc.getFirmwareVersion();
     return (version != 0);
 }
+
+/**
+ * @brief Send an APDU command to an ISO14443-4 (Type 4) NFC tag.
+ * 
+ * @param apdu Pointer to the APDU buffer to send.
+ * @param apduLength Length of the APDU buffer.
+ * @param response Pointer to a buffer to store the response APDU.
+ * @param responseLength Reference to a variable that will contain the response length.
+ * @return true if the exchange succeeded, false otherwise.
+ */
+bool PN532I2C::sendAPDU(const uint8_t* apdu, uint8_t apduLength,
+                        uint8_t* response, uint8_t &responseLength)
+{
+    bool success = nfc.inDataExchange(
+        (uint8_t*)apdu,
+        apduLength,
+        response,
+        &responseLength
+    );
+
+    if (!success) {
+        Serial.println("APDU exchange failed!");
+        return false;
+    }
+
+    Serial.print("APDU response (");
+    Serial.print(responseLength);
+    Serial.println(" bytes):");
+
+    for (uint8_t i = 0; i < responseLength; i++) {
+        Serial.print("0x");
+        Serial.print(response[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.println();
+
+    return true;
+}
+
+/**
+ * @brief Detect an ISO14443-4 / ISO-DEP card and activate it.
+ * 
+ * This function wraps the Adafruit PN532 `inListPassiveTarget()` method.
+ * It prepares the PN532 to communicate with ISO-DEP (Type 4) cards
+ * so that APDUs can be exchanged.
+ * 
+ * @return true if a card was detected and activated successfully, false otherwise.
+ */
+bool PN532I2C::inListPassiveTarget() {
+    return nfc.inListPassiveTarget();
+}
