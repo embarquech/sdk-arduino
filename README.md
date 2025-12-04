@@ -64,6 +64,9 @@ void loop() {
 }
 ```
 
+## Documentation
+
+The generated documentation for this project is available [here](https://embarquech.github.io/sdk-arduino/).
 
 ## License
 
