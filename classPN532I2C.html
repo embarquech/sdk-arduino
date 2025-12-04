@@ -125,6 +125,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a9548811fb3780a8de1e897e35a6f9d9d" id="r_a9548811fb3780a8de1e897e35a6f9d9d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532I2C.html#a9548811fb3780a8de1e897e35a6f9d9d">getFirmwareVersion</a> (uint32_t &amp;version) override</td></tr>
 <tr class="memdesc:a9548811fb3780a8de1e897e35a6f9d9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the firmware version of the PN532 module.  <br /></td></tr>
 <tr class="separator:a9548811fb3780a8de1e897e35a6f9d9d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a441bb840c4915ed24506831ed2e0ebe5" id="r_a441bb840c4915ed24506831ed2e0ebe5"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532I2C.html#a441bb840c4915ed24506831ed2e0ebe5">sendAPDU</a> (const uint8_t *apdu, uint8_t apduLength, uint8_t *response, uint8_t &amp;responseLength)</td></tr>
+<tr class="memdesc:a441bb840c4915ed24506831ed2e0ebe5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send an APDU command to an ISO14443-4 (Type 4) NFC tag.  <br /></td></tr>
+<tr class="separator:a441bb840c4915ed24506831ed2e0ebe5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a80fb202f947b17310884f9c6bc12c520" id="r_a80fb202f947b17310884f9c6bc12c520"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520">inListPassiveTarget</a> () override</td></tr>
+<tr class="memdesc:a80fb202f947b17310884f9c6bc12c520"><td class="mdescLeft">&#160;</td><td class="mdescRight">Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange.  <br /></td></tr>
+<tr class="separator:a80fb202f947b17310884f9c6bc12c520"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_classPN532Base"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_classPN532Base')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="classPN532Base.html">PN532Base</a></td></tr>
 <tr class="memitem:a8b5e53f2ee1a907753c8d50d3d4861b0 inherit pub_methods_classPN532Base" id="r_a8b5e53f2ee1a907753c8d50d3d4861b0"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Base.html#a8b5e53f2ee1a907753c8d50d3d4861b0">~PN532Base</a> ()</td></tr>
 <tr class="memdesc:a8b5e53f2ee1a907753c8d50d3d4861b0 inherit pub_methods_classPN532Base"><td class="mdescLeft">&#160;</td><td class="mdescRight">Virtual destructor.  <br /></td></tr>
@@ -251,6 +257,40 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a80fb202f947b17310884f9c6bc12c520" name="a80fb202f947b17310884f9c6bc12c520"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a80fb202f947b17310884f9c6bc12c520">&#9670;&#160;</a></span>inListPassiveTarget()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PN532I2C::inListPassiveTarget </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange. </p>
+<p>Detect an ISO14443-4 / ISO-DEP card and activate it.</p>
+<p>This function wraps the Adafruit PN532 <code><a class="el" href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520" title="Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange.">inListPassiveTarget()</a></code> method. It allows the PN532 to communicate with ISO-DEP (Type 4) cards.</p>
+<dl class="section return"><dt>Returns</dt><dd>true if a card was detected and successfully activated, false otherwise.</dd></dl>
+<p>This function wraps the Adafruit PN532 <code><a class="el" href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520" title="Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange.">inListPassiveTarget()</a></code> method. It prepares the PN532 to communicate with ISO-DEP (Type 4) cards so that APDUs can be exchanged.</p>
+<dl class="section return"><dt>Returns</dt><dd>true if a card was detected and activated successfully, false otherwise. </dd></dl>
+
+<p>Implements <a class="el" href="classPN532Base.html#a2a789e5b56969b3c7c4742cb23d3c325">PN532Base</a>.</p>
+
+</div>
+</div>
 <a id="aff02e0b1395fb60fc81a0e15b8075e94" name="aff02e0b1395fb60fc81a0e15b8075e94"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aff02e0b1395fb60fc81a0e15b8075e94">&#9670;&#160;</a></span>readUID()</h2>
 
@@ -296,6 +336,78 @@ Public Member Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>true if a card was detected and UID read successfully, false otherwise. </dd></dl>
 
 <p>Implements <a class="el" href="classPN532Base.html#a63d73542f50b418e0f5db6288ee67134">PN532Base</a>.</p>
+
+</div>
+</div>
+<a id="a441bb840c4915ed24506831ed2e0ebe5" name="a441bb840c4915ed24506831ed2e0ebe5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a441bb840c4915ed24506831ed2e0ebe5">&#9670;&#160;</a></span>sendAPDU()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool PN532I2C::sendAPDU </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>apdu</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>apduLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>response</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t &amp;&#160;</td>
+          <td class="paramname"><em>responseLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Send an APDU command to an ISO14443-4 (Type 4) NFC tag. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">apdu</td><td>Pointer to the APDU buffer to send. </td></tr>
+    <tr><td class="paramname">apduLength</td><td>Length of the APDU buffer. </td></tr>
+    <tr><td class="paramname">response</td><td>Pointer to a buffer that will receive the response APDU. </td></tr>
+    <tr><td class="paramname">responseLength</td><td>Reference to a variable that will contain the response length. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the APDU exchange succeeded, false otherwise.</dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">apdu</td><td>Pointer to the APDU buffer to send. </td></tr>
+    <tr><td class="paramname">apduLength</td><td>Length of the APDU buffer. </td></tr>
+    <tr><td class="paramname">response</td><td>Pointer to a buffer to store the response APDU. </td></tr>
+    <tr><td class="paramname">responseLength</td><td>Reference to a variable that will contain the response length. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the exchange succeeded, false otherwise. </dd></dl>
+
+<p>Implements <a class="el" href="classPN532Base.html#af5cad073c3ee0b404fcba3880068359b">PN532Base</a>.</p>
 
 </div>
 </div>

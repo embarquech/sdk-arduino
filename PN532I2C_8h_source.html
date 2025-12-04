@@ -116,16 +116,23 @@ $(document).ready(function(){initNavTree('PN532I2C_8h_source.html',''); initResi
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span> </div>
 <div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>    <span class="keywordtype">bool</span> <a class="code hl_function" href="classPN532I2C.html#a9548811fb3780a8de1e897e35a6f9d9d">getFirmwareVersion</a>(uint32_t &amp;version) <span class="keyword">override</span>;</div>
 <div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="keyword">private</span>:</div>
-<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>    Adafruit_PN532 nfc; </div>
-<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>};</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>    <span class="keywordtype">bool</span> <a class="code hl_function" href="classPN532I2C.html#a441bb840c4915ed24506831ed2e0ebe5">sendAPDU</a>(<span class="keyword">const</span> uint8_t* apdu, uint8_t apduLength,</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>                  uint8_t* response, uint8_t &amp;responseLength);</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span> </div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    <span class="keywordtype">bool</span> <a class="code hl_function" href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520">inListPassiveTarget</a>() <span class="keyword">override</span>;</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span> </div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span><span class="keyword">private</span>:</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    Adafruit_PN532 nfc; </div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>};</div>
 </div>
-<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span> </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="preprocessor">#endif</span></div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span> </div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="preprocessor">#endif</span></div>
 <div class="ttc" id="aPN532Base_8h_html"><div class="ttname"><a href="PN532Base_8h.html">PN532Base.h</a></div></div>
 <div class="ttc" id="aclassPN532Base_html"><div class="ttname"><a href="classPN532Base.html">PN532Base</a></div><div class="ttdoc">Abstract base class for PN532 NFC/RFID modules.</div><div class="ttdef"><b>Definition</b> PN532Base.h:14</div></div>
 <div class="ttc" id="aclassPN532I2C_html"><div class="ttname"><a href="classPN532I2C.html">PN532I2C</a></div><div class="ttdoc">Concrete PN532 class using I2C communication.</div><div class="ttdef"><b>Definition</b> PN532I2C.h:15</div></div>
 <div class="ttc" id="aclassPN532I2C_html_a396e005eda48f4237335bbb4c783359f"><div class="ttname"><a href="classPN532I2C.html#a396e005eda48f4237335bbb4c783359f">PN532I2C::begin</a></div><div class="ttdeci">bool begin() override</div><div class="ttdoc">Initialize the PN532 module over I2C.</div><div class="ttdef"><b>Definition</b> PN532I2C.cpp:22</div></div>
+<div class="ttc" id="aclassPN532I2C_html_a441bb840c4915ed24506831ed2e0ebe5"><div class="ttname"><a href="classPN532I2C.html#a441bb840c4915ed24506831ed2e0ebe5">PN532I2C::sendAPDU</a></div><div class="ttdeci">bool sendAPDU(const uint8_t *apdu, uint8_t apduLength, uint8_t *response, uint8_t &amp;responseLength)</div><div class="ttdoc">Send an APDU command to an ISO14443-4 (Type 4) NFC tag.</div><div class="ttdef"><b>Definition</b> PN532I2C.cpp:67</div></div>
+<div class="ttc" id="aclassPN532I2C_html_a80fb202f947b17310884f9c6bc12c520"><div class="ttname"><a href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520">PN532I2C::inListPassiveTarget</a></div><div class="ttdeci">bool inListPassiveTarget() override</div><div class="ttdoc">Detect an ISO14443-4 / ISO-DEP card and activate it for APDU exchange.</div><div class="ttdef"><b>Definition</b> PN532I2C.cpp:105</div></div>
 <div class="ttc" id="aclassPN532I2C_html_a9548811fb3780a8de1e897e35a6f9d9d"><div class="ttname"><a href="classPN532I2C.html#a9548811fb3780a8de1e897e35a6f9d9d">PN532I2C::getFirmwareVersion</a></div><div class="ttdeci">bool getFirmwareVersion(uint32_t &amp;version) override</div><div class="ttdoc">Get the firmware version of the PN532 module.</div><div class="ttdef"><b>Definition</b> PN532I2C.cpp:53</div></div>
 <div class="ttc" id="aclassPN532I2C_html_aff02e0b1395fb60fc81a0e15b8075e94"><div class="ttname"><a href="classPN532I2C.html#aff02e0b1395fb60fc81a0e15b8075e94">PN532I2C::readUID</a></div><div class="ttdeci">bool readUID(uint8_t *uidBuffer, uint8_t &amp;uidLength) override</div><div class="ttdoc">Read the UID of a detected NFC card.</div><div class="ttdef"><b>Definition</b> PN532I2C.cpp:43</div></div>
 </div><!-- fragment --></div><!-- contents -->

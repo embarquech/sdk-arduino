@@ -117,6 +117,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a3f96089bcefcaadff21fafc2904bea14" id="r_a3f96089bcefcaadff21fafc2904bea14"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Base.html#a3f96089bcefcaadff21fafc2904bea14">getFirmwareVersion</a> (uint32_t &amp;version)=0</td></tr>
 <tr class="memdesc:a3f96089bcefcaadff21fafc2904bea14"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get the firmware version of the PN532 module.  <br /></td></tr>
 <tr class="separator:a3f96089bcefcaadff21fafc2904bea14"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5cad073c3ee0b404fcba3880068359b" id="r_af5cad073c3ee0b404fcba3880068359b"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Base.html#af5cad073c3ee0b404fcba3880068359b">sendAPDU</a> (const uint8_t *apdu, uint8_t apduLength, uint8_t *response, uint8_t &amp;responseLength)=0</td></tr>
+<tr class="memdesc:af5cad073c3ee0b404fcba3880068359b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send an APDU command to an ISO14443-4 compliant tag.  <br /></td></tr>
+<tr class="separator:af5cad073c3ee0b404fcba3880068359b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2a789e5b56969b3c7c4742cb23d3c325" id="r_a2a789e5b56969b3c7c4742cb23d3c325"><td class="memItemLeft" align="right" valign="top">virtual bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Base.html#a2a789e5b56969b3c7c4742cb23d3c325">inListPassiveTarget</a> ()=0</td></tr>
+<tr class="memdesc:a2a789e5b56969b3c7c4742cb23d3c325"><td class="mdescLeft">&#160;</td><td class="mdescRight">Put the card in active ISO-DEP mode for APDU exchange.  <br /></td></tr>
+<tr class="separator:a2a789e5b56969b3c7c4742cb23d3c325"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8b5e53f2ee1a907753c8d50d3d4861b0" id="r_a8b5e53f2ee1a907753c8d50d3d4861b0"><td class="memItemLeft" align="right" valign="top">virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Base.html#a8b5e53f2ee1a907753c8d50d3d4861b0">~PN532Base</a> ()</td></tr>
 <tr class="memdesc:a8b5e53f2ee1a907753c8d50d3d4861b0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Virtual destructor.  <br /></td></tr>
 <tr class="separator:a8b5e53f2ee1a907753c8d50d3d4861b0"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -221,6 +227,36 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a2a789e5b56969b3c7c4742cb23d3c325" name="a2a789e5b56969b3c7c4742cb23d3c325"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2a789e5b56969b3c7c4742cb23d3c325">&#9670;&#160;</a></span>inListPassiveTarget()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool PN532Base::inListPassiveTarget </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Put the card in active ISO-DEP mode for APDU exchange. </p>
+<dl class="section return"><dt>Returns</dt><dd>true if a card was successfully activated, false otherwise. </dd></dl>
+
+<p>Implemented in <a class="el" href="classPN532I2C.html#a80fb202f947b17310884f9c6bc12c520">PN532I2C</a>.</p>
+
+</div>
+</div>
 <a id="a63d73542f50b418e0f5db6288ee67134" name="a63d73542f50b418e0f5db6288ee67134"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a63d73542f50b418e0f5db6288ee67134">&#9670;&#160;</a></span>readUID()</h2>
 
@@ -266,6 +302,69 @@ Public Member Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>true if a card was detected and UID read successfully, false otherwise. </dd></dl>
 
 <p>Implemented in <a class="el" href="classPN532I2C.html#aff02e0b1395fb60fc81a0e15b8075e94">PN532I2C</a>.</p>
+
+</div>
+</div>
+<a id="af5cad073c3ee0b404fcba3880068359b" name="af5cad073c3ee0b404fcba3880068359b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af5cad073c3ee0b404fcba3880068359b">&#9670;&#160;</a></span>sendAPDU()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual bool PN532Base::sendAPDU </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>apdu</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>apduLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>response</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t &amp;&#160;</td>
+          <td class="paramname"><em>responseLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Send an APDU command to an ISO14443-4 compliant tag. </p>
+<p>Base method to allow APDU exchange with Type 4 NFC tags. Implementations may return false if the interface does not support APDUs.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">apdu</td><td>Pointer to the APDU command data. </td></tr>
+    <tr><td class="paramname">apduLength</td><td>Size of the APDU command. </td></tr>
+    <tr><td class="paramname">response</td><td>Pointer to a buffer that will store the APDU response. </td></tr>
+    <tr><td class="paramname">responseLength</td><td>Reference that receives the length of the response. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the APDU was successfully exchanged, false otherwise. </dd></dl>
+
+<p>Implemented in <a class="el" href="classPN532I2C.html#a441bb840c4915ed24506831ed2e0ebe5">PN532I2C</a>.</p>
 
 </div>
 </div>

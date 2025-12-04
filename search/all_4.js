@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['_7epn532base_0',['~PN532Base',['../classPN532Base.html#a8b5e53f2ee1a907753c8d50d3d4861b0',1,'PN532Base']]]
+  ['readuid_0',['readuid',['../classPN532Base.html#a63d73542f50b418e0f5db6288ee67134',1,'PN532Base::readUID()'],['../classPN532I2C.html#aff02e0b1395fb60fc81a0e15b8075e94',1,'PN532I2C::readUID()']]]
 ];
