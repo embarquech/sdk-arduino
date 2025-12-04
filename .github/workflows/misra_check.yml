@@ -27,4 +27,7 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
-            --force
+            --force \
+            -I examples \
+            -DSTATIC_ANALYSIS=1 \
+            examples
