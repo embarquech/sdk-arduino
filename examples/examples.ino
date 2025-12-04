@@ -58,15 +58,7 @@ void sendTestAPDU() {
     Serial.println("Sending APDU...");
 
     if (nfc->sendAPDU(selectApdu, sizeof(selectApdu), response, responseLength)) {
-        Serial.print("APDU Response (");
-        Serial.print(responseLength);
-        Serial.println(" bytes):");
-
-        for (uint8_t i = 0; i < responseLength; i++) {
-            Serial.print(" 0x");
-            Serial.print(response[i], HEX);
-        }
-        Serial.println();
+        /* APDU response is displayed */
     } else {
         Serial.println("APDU exchange failed!");
     }
