@@ -28,7 +28,4 @@ jobs:
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
             --force \
-            -I main \
-            -I components \
-            -DSTATIC_ANALYSIS=1 \
-            main components
+            -DSTATIC_ANALYSIS=1
