@@ -53,8 +53,8 @@ Before using `cryptnox-sdk-arduino`, you must install the following libraries vi
 
 > ⚠️ Important: Make sure the I²C switches on the PN532 module are configured correctly for I²C communication:
 >
-> - **Switch 1** → LOW  
-> - **Switch 2** → HIGH
+> - **Switch 0** → LOW  
+> - **Switch 1** → HIGH
 
 <img width="800" alt="arduino_uno_pn532_i2c_bb" src="https://github.com/user-attachments/assets/48ca89ec-05b9-423a-ab0f-ab6f4ed7e823" />
 
