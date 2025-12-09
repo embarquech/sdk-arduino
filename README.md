@@ -18,10 +18,9 @@ It allows performing basic operations with the card, such as secure communicatio
 ## Supported hardware
 
 - **Cryptnox Smart cards** 💳
-- **Standard PC/SC Smart card Readers**: either USB NFC reader or a USB smart card reader
-  → Readers are also available in the Cryptnox shop.
+- **Arduino platforms** (e.g., Arduino Uno) with **PN532 NFC modules**
 
-Get your card and readers here: [shop.cryptnox.com](https://shop.cryptnox.com)
+Get your cards here: [shop.cryptnox.com](https://shop.cryptnox.com)
 
 ---
 
