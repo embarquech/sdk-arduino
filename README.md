@@ -37,6 +37,20 @@ Before using `cryptnox-sdk-arduino`, you must install the following libraries vi
 
 ---
 
+## Adafruit_PN532 customization
+
+> [!IMPORTANT]  
+> To ensure compatibility with this SDK, you **must manually modify** the following modification.
+> 
+> Locate in `libraries/Adafruit_PN532/Adafruit_PN532.cpp`:
+> ```cpp
+> #define PN532_PACKBUFFSIZ 64
+> ```
+> And replace it with:
+> ```cpp
+> #define PN532_PACKBUFFSIZ 255
+> ```
+
 ## Installation
 
 1. Download or clone this repository.  
