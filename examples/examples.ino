@@ -11,16 +11,12 @@
 #include "CryptnoxWallet.h"
 
 /**
- * @def PN532_IRQ
- * @brief IRQ pin of the PN532 module. Set to -1 if not used.
+ * @def PN532_SS
+ * @brief Slave select pin of the PN532 module. Set to -1 if not used.
  */
-#define PN532_IRQ   -1
+#define PN532_SS   (10)
 
-/**
- * @def PN532_RESET
- * @brief RESET pin of the PN532 module. Set to -1 if not used.
- */
-#define PN532_RESET -1
+CryptnoxWallet wallet(PN532_SS, &SPI);
 
 /**
  * @brief Arduino setup function.
@@ -31,8 +27,17 @@
 void setup() {
     Serial.begin(115200);
 
-    /* Initialize I2C bus */
-    Wire.begin();
+    /* Initialize SPI bus */
+    SPI.begin();
+
+    /* Initialize the PN532 module */
+    if (wallet.begin()) {
+        Serial.println(F("PN532 initialized"));
+    } else {
+        Serial.println(F("PN532 init failed"));
+        /* Halt program if initialization fails */
+        while(1);
+    }
 }
 
 /**
@@ -46,25 +51,6 @@ void setup() {
  * passive NFC/ISO-DEP card and processes wallet APDU commands.
  */
 void loop() {
-    /* Static wallet object persists between loop iterations */
-    static CryptnoxWallet wallet(PN532_IRQ, PN532_RESET, &Wire);
-
-    /* Flag to ensure PN532 is initialized only once */
-    static bool initialized = false;
-
-    if (!initialized) {
-        /* Initialize the PN532 module */
-        if (wallet.begin()) {
-            Serial.println(F("PN532 initialized"));
-        } else {
-            Serial.println(F("PN532 init failed"));
-            /* Halt program if initialization fails */
-            while(1);
-        }
-
-        /* Set flag so initialization is not repeated */
-        initialized = true;
-    }
 
     /* Process any detected NFC card */
     (void)wallet.processCard();

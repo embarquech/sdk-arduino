@@ -18,10 +18,9 @@ It allows performing basic operations with the card, such as secure communicatio
 ## Supported hardware
 
 - **Cryptnox Smart cards** 💳
-- **Standard PC/SC Smart card Readers**: either USB NFC reader or a USB smart card reader
-  → Readers are also available in the Cryptnox shop.
+- **Arduino platforms** (e.g., Arduino Uno) with **PN532 NFC modules**
 
-Get your card and readers here: [shop.cryptnox.com](https://shop.cryptnox.com)
+Get your cards here: [shop.cryptnox.com](https://shop.cryptnox.com)
 
 ---
 
@@ -29,13 +28,27 @@ Get your card and readers here: [shop.cryptnox.com](https://shop.cryptnox.com)
 
 Before using `cryptnox-sdk-arduino`, you must install the following libraries via the **Arduino Library Manager**:
 
-- **AESLib**
-- **Adafruit_BusIO**
-- **Adafruit_PN532**
-- **Crypto**
-- **micro-ecc**
+- **AESLib** (v2.3.6)
+- **Adafruit_BusIO** (v1.17.4)
+- **Adafruit_PN532** (v1.34.0)
+- **Crypto** (v0.4.0)
+- **micro-ecc** (v1.0.0)
 
 ---
+
+## Adafruit_PN532 customization
+
+> [!IMPORTANT]  
+> To ensure compatibility with this SDK, you **must** modify Adafruit_PN532 library.
+> 
+> Locate in `libraries/Adafruit_PN532/Adafruit_PN532.cpp`:
+> ```cpp
+> #define PN532_PACKBUFFSIZ 64
+> ```
+> And replace it with:
+> ```cpp
+> #define PN532_PACKBUFFSIZ 255
+> ```
 
 ## Installation
 
