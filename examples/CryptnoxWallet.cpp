@@ -2,6 +2,8 @@
 #include "CryptnoxWallet.h"
 #include "uECC.h"
 
+volatile uint8_t uaid[200] = { 0xFF };
+
 #define RESPONSE_LENGTH_IN_BYTES 64
 #define RANDOM_BYTES 8
 
@@ -98,40 +100,42 @@ bool CryptnoxWallet::selectApdu() {
 bool CryptnoxWallet::getCardCertificate(uint8_t* response, uint8_t &responseLength) {
     bool ret = false;
 
-    /* APDU template (last 8 bytes replaced by random nonce) */
-    uint8_t getCardCertificateApdu[] = {
-        0x80,  /* CLA */
-        0xF8,  /* INS : OPEN SECURE CHANNEL */
-        0x00,  /* P1 */
-        0x00,  /* P2 */
-        0x08,  /* Lc : 8 bytes nonce */
-    };
+    if (response!= NULL) {
+        /* APDU template (last 8 bytes replaced by random nonce) */
+        uint8_t getCardCertificateApdu[] = {
+            0x80,  /* CLA */
+            0xF8,  /* INS : OPEN SECURE CHANNEL */
+            0x00,  /* P1 */
+            0x00,  /* P2 */
+            0x08,  /* Lc : 8 bytes nonce */
+        };
 
-    /* Generate 8 random bytes */
-    uint8_t randomBytes[RANDOM_BYTES];
-    randomSeed(analogRead(0));
-    for (int i = 0; i < RANDOM_BYTES; i++) {
-        randomBytes[i] = random(0, 256);
+        /* Generate 8 random bytes */
+        uint8_t randomBytes[RANDOM_BYTES];
+        randomSeed(analogRead(0));
+        for (int i = 0; i < RANDOM_BYTES; i++) {
+            randomBytes[i] = random(0, 256);
+        }
+
+        /* Final APDU = header + 8 random bytes */
+        uint8_t fullApdu[sizeof(getCardCertificateApdu) + RANDOM_BYTES];
+        memcpy(fullApdu, getCardCertificateApdu, sizeof(getCardCertificateApdu));
+        memcpy(fullApdu + sizeof(getCardCertificateApdu), randomBytes, RANDOM_BYTES);
+
+        /* Print APDU */
+        printApdu(fullApdu, sizeof(fullApdu));
+
+        Serial.println(F("Sending getCardCertificate APDU..."));
+
+        /* Send APDU */
+        if (driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
+            Serial.println(F("APDU exchange successful!"));
+            ret = true;
+        } else {
+            Serial.println(F("APDU getCardCertificate failed."));
+        }
     }
-
-    /* Final APDU = header + 8 random bytes */
-    uint8_t fullApdu[sizeof(getCardCertificateApdu) + RANDOM_BYTES];
-    memcpy(fullApdu, getCardCertificateApdu, sizeof(getCardCertificateApdu));
-    memcpy(fullApdu + sizeof(getCardCertificateApdu), randomBytes, RANDOM_BYTES);
-
-    /* Print APDU */
-    printApdu(fullApdu, sizeof(fullApdu));
-
-    Serial.println(F("Sending getCardCertificate APDU..."));
-
-    /* Send APDU */
-    if (driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
-        Serial.println(F("APDU exchange successful!"));
-        ret = true;
-    } else {
-        Serial.println(F("APDU getCardCertificate failed."));
-    }
-
+    
     return ret;
 }
 
@@ -215,7 +219,7 @@ int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
  * @param length Number of bytes in the APDU.
  * @param label Optional label to prepend (default: "APDU to send").
  */
-void CryptnoxWallet::printApdu(const uint8_t* apdu, uint8_t length, const char* label = "APDU to send") {
+void CryptnoxWallet::printApdu(const uint8_t* apdu, uint8_t length, const char* label) {
     Serial.print(label);
     Serial.print(F(": "));
     Serial.println();
@@ -230,4 +234,18 @@ void CryptnoxWallet::printApdu(const uint8_t* apdu, uint8_t length, const char* 
     }
     
     Serial.println();
+}
+
+/**
+ * @brief Derive a pairing key by hashing the PUK 32 times (SHA256^32).
+ * 
+ * When P1=0xFF, the pairing key is computed as SHA256 applied 32 times
+ * to the PUK code. This allows the PUK to be used as a fallback pairing key.
+ * 
+ * @param puk Pointer to the PUK bytes.
+ * @param pukLength Length of the PUK.
+ * @param pairingKey Output buffer (must be at least 32 bytes).
+ */
+void CryptnoxWallet::derivePairingKeyFromPUK(const uint8_t* puk, size_t pukLength, uint8_t* pairingKey) {
+
 }
