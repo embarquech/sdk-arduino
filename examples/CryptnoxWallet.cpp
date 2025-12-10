@@ -183,10 +183,10 @@ bool CryptnoxWallet::openSecureChannel() {
 
     /* Send OPC request */
     if (driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
-        Serial.println(F("OPC APDU exchange successful!"));
+        Serial.println(F("APDU exchange successful!"));
         ret = true;
     } else {
-        Serial.println(F("OPC APDU exchange failed."));
+        Serial.println(F("APDU exchange failed."));
     }
 
     return ret;
