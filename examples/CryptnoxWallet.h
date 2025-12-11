@@ -133,10 +133,10 @@ public:
     * @param[in]  cardCertificate        Pointer to the full card certificate response.
     * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
     *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
-    * @param[out] cardEphemeralPubKey    Optional buffer to store **65 bytes** including the 0x04 prefix.
+    * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
     *                                    Can be nullptr if not needed.
     */
-    bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* cardEphemeralPubKey = nullptr);
+    bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = nullptr);
 
     /**
     * @brief Print an APDU in hex format with optional label.

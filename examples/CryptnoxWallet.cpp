@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <SHA256.h>
+#include <SHA512.h>
 #include "CryptnoxWallet.h"
 
 #define RESPONSE_GETCARDCERTIFICATE_IN_BYTES    148
