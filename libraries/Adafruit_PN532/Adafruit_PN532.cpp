@@ -720,7 +720,7 @@ bool Adafruit_PN532::inDataExchange(uint8_t *send, uint8_t sendLength,
       length -= 3;
 
       if (length > *responseLength) {
-        length = *responseLength; // silent truncation...
+        return false;
       }
 
       for (i = 0; i < length; ++i) {
