@@ -139,9 +139,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ad64326f5103642fb485d7109018f68df" id="r_ad64326f5103642fb485d7109018f68df"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#ad64326f5103642fb485d7109018f68df">mutuallyAuthenticate</a> (uint8_t *salt, uint8_t *clientPublicKey, uint8_t *clientPrivateKey, const uECC_Curve_t *sessionCurve, uint8_t *cardEphemeralPubKey)</td></tr>
 <tr class="memdesc:ad64326f5103642fb485d7109018f68df"><td class="mdescLeft">&#160;</td><td class="mdescRight">Performs the ECDH-based mutual authentication step of the secure channel.  <br /></td></tr>
 <tr class="separator:ad64326f5103642fb485d7109018f68df"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a356d0acc8e9edbe31d85376e5b1816db" id="r_a356d0acc8e9edbe31d85376e5b1816db"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a356d0acc8e9edbe31d85376e5b1816db">extractCardEphemeralKey</a> (const uint8_t *cardCertificate, uint8_t *cardEphemeralPubKey, uint8_t *cardEphemeralPubKey=nullptr)</td></tr>
-<tr class="memdesc:a356d0acc8e9edbe31d85376e5b1816db"><td class="mdescLeft">&#160;</td><td class="mdescRight">Extracts the card's ephemeral EC P-256 public key from the certificate.  <br /></td></tr>
-<tr class="separator:a356d0acc8e9edbe31d85376e5b1816db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae435d13a1a21b8a4f5cdbc00f9d2d24e" id="r_ae435d13a1a21b8a4f5cdbc00f9d2d24e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#ae435d13a1a21b8a4f5cdbc00f9d2d24e">extractCardEphemeralKey</a> (const uint8_t *cardCertificate, uint8_t *cardEphemeralPubKey, uint8_t *fullEphemeralPubKey65=nullptr)</td></tr>
+<tr class="memdesc:ae435d13a1a21b8a4f5cdbc00f9d2d24e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Extracts the card's ephemeral EC P-256 public key from the certificate.  <br /></td></tr>
+<tr class="separator:ae435d13a1a21b8a4f5cdbc00f9d2d24e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0c4d176b4cfb46e8705db2eae661635d" id="r_a0c4d176b4cfb46e8705db2eae661635d"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a0c4d176b4cfb46e8705db2eae661635d">printApdu</a> (const uint8_t *apdu, uint8_t length, const char *label=&quot;APDU to send&quot;)</td></tr>
 <tr class="memdesc:a0c4d176b4cfb46e8705db2eae661635d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print an APDU in hex format with optional label.  <br /></td></tr>
 <tr class="separator:a0c4d176b4cfb46e8705db2eae661635d"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -436,8 +436,8 @@ Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="a356d0acc8e9edbe31d85376e5b1816db" name="a356d0acc8e9edbe31d85376e5b1816db"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a356d0acc8e9edbe31d85376e5b1816db">&#9670;&#160;</a></span>extractCardEphemeralKey()</h2>
+<a id="ae435d13a1a21b8a4f5cdbc00f9d2d24e" name="ae435d13a1a21b8a4f5cdbc00f9d2d24e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae435d13a1a21b8a4f5cdbc00f9d2d24e">&#9670;&#160;</a></span>extractCardEphemeralKey()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -473,7 +473,7 @@ Public Member Functions</h2></td></tr>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">cardCertificate</td><td>Pointer to the full card certificate response. </td></tr>
     <tr><td class="paramdir">[out]</td><td class="paramname">cardEphemeralPubKey</td><td>Buffer to store <b>64 bytes</b> (X||Y coordinates only, no 0x04 prefix) for use with uECC_shared_secret. Must be at least 64 bytes. </td></tr>
-    <tr><td class="paramdir">[out]</td><td class="paramname">cardEphemeralPubKey</td><td>Optional buffer to store <b>65 bytes</b> including the 0x04 prefix. Can be nullptr if not needed.</td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">fullEphemeralPubKey65</td><td>Optional buffer to store <b>65 bytes</b> including the 0x04 prefix. Can be nullptr if not needed.</td></tr>
   </table>
   </dd>
 </dl>
