@@ -388,27 +388,27 @@ bool CryptnoxWallet::checkStatusWord(const uint8_t* response, uint8_t responseLe
  * @param[in]  cardCertificate        Pointer to the full card certificate response.
  * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
  *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
- * @param[out] fullEphemeralKey65     Optional buffer to store **65 bytes** including the 0x04 prefix.
+ * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
  *                                    Can be nullptr if not needed.
  */
-bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralKey65) {
+bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65) {
     bool ret = false;
 
+    Serial.print(F("Full Ephemeral Public Key (65 bytes): "));
     if ((cardCertificate == nullptr) || (cardEphemeralPubKey == nullptr)) {
         ret = false; // invalid input
     }
     else {
-        const uint8_t keyStart = 1u + 8u; // skip 'C' and nonce
-        const uint8_t fullKeyLength = 65u; // includes 0x04 prefix
-        const uint8_t trimmedKeyLength = 64u; // X||Y for uECC
-
+        const uint8_t keyStart = 1u + 8u; /* skip 'C' and nonce */
+        const uint8_t fullKeyLength = 65u; /* includes 0x04 prefix */
         uint8_t i;
+
         for (i = 0u; i < fullKeyLength; i++) {
             uint8_t b = cardCertificate[keyStart + i];
 
             /* Copy full key including prefix if buffer provided */
-            if (fullEphemeralKey65 != nullptr) {
-                fullEphemeralKey65[i] = b;
+            if (fullEphemeralPubKey65 != nullptr) {
+                fullEphemeralPubKey65[i] = b;
             }
 
             /* Skip the first byte (0x04 prefix) for ECDH */
@@ -416,7 +416,7 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
                 cardEphemeralPubKey[i - 1u] = b;
             }
 
-            /* Optional: print hex to Serial for debugging */
+            /* Print hex to Serial for debugging */
             if (b < 0x10u) {
                 Serial.print('0');
             }
