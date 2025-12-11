@@ -125,6 +125,18 @@ public:
     * @param label Optional label for printing (default: "APDU to send").
     */
     void printApdu(const uint8_t* apdu, uint8_t length, const char* label = "APDU to send");
+    
+    /**
+    * @brief Derive a pairing key by hashing the PUK 32 times (SHA256^32).
+    * 
+    * When P1=0xFF, the pairing key is computed as SHA256 applied 32 times
+    * to the PUK code. This allows the PUK to be used as a fallback pairing key.
+    * 
+    * @param puk Pointer to the PUK bytes.
+    * @param pukLength Length of the PUK.
+    * @param pairingKey Output buffer (must be at least 32 bytes).
+    */
+    void derivePairingKeyFromPUK(const uint8_t* puk, size_t pukLength, uint8_t* pairingKey); 
 
 private:
     PN532Base driver; /**< PN532 driver for low-level NFC operations */

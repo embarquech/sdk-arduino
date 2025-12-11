@@ -1,10 +1,11 @@
 #include <Arduino.h>
+#include <SHA256.h>
 #include "CryptnoxWallet.h"
 #include "uECC.h"
 
-volatile uint8_t uaid[200] = { 0xFF };
-
-#define RESPONSE_LENGTH_IN_BYTES 64
+#define RESPONSE_GETCARDCERTIFICATE_IN_BYTES    148
+#define RESPONSE_SELECT_IN_BYTES                 26
+#define RESPONSE_OPENSECURECHANNEL_IN_BYTES      34
 #define RANDOM_BYTES 8
 
 /* Main NFC handler:
@@ -14,7 +15,7 @@ volatile uint8_t uaid[200] = { 0xFF };
 bool CryptnoxWallet::processCard() {
     bool ret = false;
     /* Local response buffer */
-    uint8_t getCardCertificateResponse[RESPONSE_LENGTH_IN_BYTES];
+    uint8_t getCardCertificateResponse[RESPONSE_GETCARDCERTIFICATE_IN_BYTES];
     uint8_t getCardCertificateResponseLength = sizeof(getCardCertificateResponse);
 
     /* Check for ISO-DEP capable target (APDU-capable card) */
@@ -73,7 +74,7 @@ bool CryptnoxWallet::selectApdu() {
     printApdu(selectApdu, sizeof(selectApdu));
 
     /* Response buffer on stack */
-    uint8_t response[RESPONSE_LENGTH_IN_BYTES];
+    uint8_t response[RESPONSE_SELECT_IN_BYTES];
     uint8_t responseLength = sizeof(response);
 
     Serial.println(F("Sending Select APDU..."));
@@ -177,7 +178,7 @@ bool CryptnoxWallet::openSecureChannel() {
     memcpy(fullApdu + sizeof(opcApduHeader), publicKey, sizeof(publicKey));
 
     /* Response buffer */
-    uint8_t response[255];
+    uint8_t response[RESPONSE_OPENSECURECHANNEL_IN_BYTES];
     uint8_t responseLength = sizeof(response);
 
     /* Print APDU */
@@ -246,6 +247,33 @@ void CryptnoxWallet::printApdu(const uint8_t* apdu, uint8_t length, const char* 
  * @param pukLength Length of the PUK.
  * @param pairingKey Output buffer (must be at least 32 bytes).
  */
-void CryptnoxWallet::derivePairingKeyFromPUK(const uint8_t* puk, size_t pukLength, uint8_t* pairingKey) {
 
+/**
+ * @brief Derive a pairing key by hashing the PUK 32 times (SHA256^32).
+ * 
+ * When P1=0xFF, the pairing key is computed as SHA256 applied 32 times
+ * to the PUK code. This allows the PUK to be used as a fallback pairing key.
+ * 
+ * @param puk Pointer to the PUK bytes.
+ * @param pukLength Length of the PUK.
+ * @param pairingKey Output buffer (must be at least 32 bytes).
+ */
+void CryptnoxWallet::derivePairingKeyFromPUK(const uint8_t* puk, size_t pukLength, uint8_t* pairingKey) {
+    SHA256 sha;
+    uint8_t hash[32];
+
+    /* Initial hash = SHA256(PUK) */
+    sha.reset();
+    sha.update(puk, pukLength);
+    sha.finalize(hash, 32);
+
+    /* Iteratively hash 31 more times (total 32) */
+    for (int i = 1; i < 32; i++) {
+        sha.reset();
+        sha.update(hash, 32);
+        sha.finalize(hash, 32);
+    }
+
+    /* Copy final hash to output */
+    memcpy(pairingKey, hash, 32);
 }
