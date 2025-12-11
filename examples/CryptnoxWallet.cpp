@@ -1,7 +1,6 @@
 #include <Arduino.h>
 #include <SHA256.h>
 #include "CryptnoxWallet.h"
-#include "uECC.h"
 
 #define RESPONSE_GETCARDCERTIFICATE_IN_BYTES    148
 #define RESPONSE_SELECT_IN_BYTES                 26
@@ -13,6 +12,10 @@
 
 #define RANDOM_BYTES                              8
 #define COMMON_PAIRING_DATA                        "Cryptnox Basic CommonPairingData"
+#define CLIENT_PRIVATE_KEY_SIZE                  32
+#define CLIENT_PUBLIC_KEY_SIZE                   64
+#define CARDEPHEMERALPUBKEY_SIZE                 64
+
 
 /* Main NFC handler:
  * - If ISO-DEP card detected → select app, request certificate, open secure channel.
@@ -22,8 +25,14 @@ bool CryptnoxWallet::processCard() {
     bool ret = false;
     /* Local response buffer */
     uint8_t cardCertificate[GETCARDCERTIFICATE_IN_BYTES];
-    uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
     uint8_t cardCertificateLength = 0;
+    uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
+
+    uint8_t clientPrivateKey[32];
+    uint8_t clientPublicKey[64];
+    const uECC_Curve_t * sessionCurve = uECC_secp256r1();
+
+    uint8_t cardEphemeralPubKey[CARDEPHEMERALPUBKEY_SIZE];
 
     /* Check for ISO-DEP capable target (APDU-capable card) */
     if (driver.inListPassiveTarget()) {
@@ -31,7 +40,9 @@ bool CryptnoxWallet::processCard() {
         if (selectApdu()) {
             /* Get certificate and establish secure channel */
             getCardCertificate(cardCertificate, cardCertificateLength);
-            openSecureChannel(openSecureChannelSalt);
+            extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey);
+            openSecureChannel(openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve);
+            mutuallyAuthenticate(openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve, cardEphemeralPubKey);
             ret = true;
         }
     }
@@ -118,12 +129,12 @@ bool CryptnoxWallet::selectApdu() {
  * @param[in,out] cardEphemeralPubKeyLength Input: size of the buffer; Output: actual key length (65 bytes).
  * @return true if the APDU exchange and key extraction succeeded, false otherwise.
  */
-bool CryptnoxWallet::getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &cardEphemeralPubKeyLength) {
+bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardCertificateLength) {
     bool ret = false;
     uint8_t getCardCertificateResponse[RESPONSE_GETCARDCERTIFICATE_IN_BYTES];
     uint8_t getCardCertificateResponseLength = sizeof(getCardCertificateResponse);
 
-    if (cardEphemeralPubKey != NULL) {
+    if (cardCertificate != nullptr) {
         /* APDU template (last 8 bytes replaced by random nonce) */
         uint8_t getCardCertificateApdu[] = {
             0x80,  /* CLA */
@@ -154,10 +165,10 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &c
         if (driver.sendAPDU(fullApdu, sizeof(fullApdu), getCardCertificateResponse, getCardCertificateResponseLength)) {
             if (checkStatusWord(getCardCertificateResponse, getCardCertificateResponseLength, 0x90, 0x00)) {
                 /* Remove status word from answer */
-                cardEphemeralPubKeyLength = getCardCertificateResponseLength - RESPONSE_STATUS_WORDS_IN_BYTES;
+                cardCertificateLength = getCardCertificateResponseLength - RESPONSE_STATUS_WORDS_IN_BYTES;
 
                 /* Copy only the useful data (the salt) into the buffer */
-                memcpy(cardEphemeralPubKey, getCardCertificateResponse, cardEphemeralPubKeyLength);
+                memcpy(cardCertificate, getCardCertificateResponse, cardCertificateLength);
 
                 Serial.println(F("APDU exchange successful!"));    
                 ret = true;
@@ -178,23 +189,21 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &c
  * This function sends the APDU command to the card to get the session salt, which is
  * required for the subsequent key derivation in the secure channel setup.
  *
- * @param[out] salt Pointer to a 32-byte buffer where the card-provided salt will be stored.
+ * @param[inout] salt Pointer to a 32-byte buffer where the card-provided salt will be stored.
+ * @param[inout] clientPublicKey Buffer to store the client's generated 64-byte public key.
+ * @param[inout] clientPrivateKey Buffer to store the client's generated 32-byte private key.
+ * @param[in] sessionCurve Pointer to the uECC curve object used for key generation (e.g., uECC_secp256r1()).
  * @return true if the APDU exchange succeeded and the salt was retrieved, false otherwise.
  */
-bool CryptnoxWallet::openSecureChannel(uint8_t* salt) {
+bool CryptnoxWallet::openSecureChannel(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve) {
     bool ret = false;
-
-    /* Keys allocated on stack to save global RAM */
-    uint8_t clientPrivateKey[32];
-    uint8_t clientPublicKey[64];
 
     /* ECC setup and random generation */
     randomSeed(analogRead(0));
     uECC_set_rng(&uECC_RNG);
-    const uECC_Curve_t *curve = uECC_secp256r1();
 
     /* Generate keypair */
-    bool eccSuccess = uECC_make_key(clientPublicKey, clientPrivateKey, curve);
+    bool eccSuccess = uECC_make_key(clientPublicKey, clientPrivateKey, sessionCurve);
 
     /* Abort if ECC fails */
     if (!eccSuccess) {
@@ -212,9 +221,9 @@ bool CryptnoxWallet::openSecureChannel(uint8_t* salt) {
         };
 
         /* Construct final APDU */
-        uint8_t fullApdu[sizeof(opcApduHeader) + sizeof(clientPublicKey)];
+        uint8_t fullApdu[sizeof(opcApduHeader) + CLIENT_PUBLIC_KEY_SIZE];
         memcpy(fullApdu, opcApduHeader, sizeof(opcApduHeader));
-        memcpy(fullApdu + sizeof(opcApduHeader), clientPublicKey, sizeof(clientPublicKey));
+        memcpy(fullApdu + sizeof(opcApduHeader), clientPublicKey, CLIENT_PUBLIC_KEY_SIZE);
 
         /* Response buffer */
         uint8_t response[RESPONSE_OPENSECURECHANNEL_IN_BYTES];
@@ -252,9 +261,37 @@ bool CryptnoxWallet::openSecureChannel(uint8_t* salt) {
     return ret;
 }
 
-/* Establish secure channel using ECC keypair exchange */
-bool CryptnoxWallet::mutuallyAuthenticate() {
-    return true;
+/**
+ * @brief Performs the ECDH-based mutual authentication step of the secure channel.
+ *
+ * This function computes the shared secret between the client's private key
+ * and the card's ephemeral public key using the specified ECC curve.
+ *
+ * @param[in] salt Pointer to the 32-byte salt received from the card.
+ * @param[in] clientPublicKey Pointer to the 64-byte client public key.
+ * @param[in] clientPrivateKey Pointer to the 32-byte client private key.
+ * @param[in] sessionCurve Pointer to the ECC curve (e.g., uECC_secp256r1()).
+ * @param[in] cardEphemeralPubKey Pointer to the 65-byte card ephemeral public key ('0x04' prefix + X||Y).
+ * @return true if the shared secret was successfully generated, false otherwise.
+ */
+bool CryptnoxWallet::mutuallyAuthenticate(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve, uint8_t* cardEphemeralPubKey) {
+    bool ret = false;
+
+    char pairingKey[] = COMMON_PAIRING_DATA;
+    uint8_t shared_secret_opc[32];
+    uint8_t peerPublicKey[64]; 
+    uint8_t sharedSecret[32];
+    bool sharedSecretOk;
+    bool eccSharedSuccessOPC;
+    eccSharedSuccessOPC = uECC_shared_secret(cardEphemeralPubKey, clientPublicKey, shared_secret_opc, sessionCurve);
+    if (eccSharedSuccessOPC == true) {
+        Serial.println(F("eccSharedSuccessOPC generation ok!"));    
+        ret = true;
+    } 
+    else {
+        Serial.println(F("eccSharedSuccessOPC generation fail!"));
+    }
+    return ret;
 }
 
 /**
@@ -309,7 +346,7 @@ void CryptnoxWallet::printApdu(const uint8_t* apdu, uint8_t length, const char* 
 bool CryptnoxWallet::checkStatusWord(const uint8_t* response, uint8_t responseLength, uint8_t sw1Expected, uint8_t sw2Expected) {
     bool ret = false;
 
-    if (response == NULL || responseLength < 2) {
+    if (response == nullptr || responseLength < 2) {
         Serial.println(F("checkStatusWord: response too short."));
         ret = false;
     }
@@ -332,6 +369,62 @@ bool CryptnoxWallet::checkStatusWord(const uint8_t* response, uint8_t responseLe
         else {
             ret = false;
         }
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Extracts the card's ephemeral EC P-256 public key from the certificate.
+ *
+ * Certificate layout (0-based):
+ * | Field                   | Size       | Offset |
+ * |-------------------------|-----------|--------|
+ * | 'C'                     | 1 byte    | 0      |
+ * | Nonce                   | 8 bytes   | 1–8    |
+ * | Session Public Key      | 65 bytes  | 9–73   |
+ * | ASN.1 DER Signature     | 70–72 bytes | 74+  |
+ *
+ * @param[in]  cardCertificate        Pointer to the full card certificate response.
+ * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
+ *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
+ * @param[out] fullEphemeralKey65     Optional buffer to store **65 bytes** including the 0x04 prefix.
+ *                                    Can be nullptr if not needed.
+ */
+bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralKey65) {
+    bool ret = false;
+
+    if ((cardCertificate == nullptr) || (cardEphemeralPubKey == nullptr)) {
+        ret = false; // invalid input
+    }
+    else {
+        const uint8_t keyStart = 1u + 8u; // skip 'C' and nonce
+        const uint8_t fullKeyLength = 65u; // includes 0x04 prefix
+        const uint8_t trimmedKeyLength = 64u; // X||Y for uECC
+
+        uint8_t i;
+        for (i = 0u; i < fullKeyLength; i++) {
+            uint8_t b = cardCertificate[keyStart + i];
+
+            /* Copy full key including prefix if buffer provided */
+            if (fullEphemeralKey65 != nullptr) {
+                fullEphemeralKey65[i] = b;
+            }
+
+            /* Skip the first byte (0x04 prefix) for ECDH */
+            if (i > 0u) {
+                cardEphemeralPubKey[i - 1u] = b;
+            }
+
+            /* Optional: print hex to Serial for debugging */
+            if (b < 0x10u) {
+                Serial.print('0');
+            }
+            Serial.print(b, HEX);
+            Serial.print(' ');
+        }
+
+        Serial.println();
     }
 
     return ret;

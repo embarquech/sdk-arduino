@@ -3,6 +3,7 @@
 
 #include "PN532Base.h"
 #include <Arduino.h>
+#include "uECC.h"
 
 /**
  * @class CryptnoxWallet
@@ -122,9 +123,20 @@ public:
     * @param[out] salt Pointer to a 32-byte buffer where the card-provided salt will be stored.
     * @return true if the APDU exchange succeeded and the salt was retrieved, false otherwise.
     */
-    bool openSecureChannel(uint8_t* salt);
+    bool openSecureChannel(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve);
 
-    bool mutuallyAuthenticate();
+    bool mutuallyAuthenticate(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve, uint8_t* cardEphemeralPubKey);
+
+    /**
+    * @brief Extracts the card's ephemeral EC P-256 public key from the certificate.
+    *
+    * @param[in]  cardCertificate        Pointer to the full card certificate response.
+    * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
+    *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
+    * @param[out] fullEphemeralKey65     Optional buffer to store **65 bytes** including the 0x04 prefix.
+    *                                    Can be nullptr if not needed.
+    */
+    bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralKey65 = nullptr);
 
     /**
     * @brief Print an APDU in hex format with optional label.
