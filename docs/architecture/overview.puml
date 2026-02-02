@@ -1,55 +1,40 @@
-@startuml Cryptnox SDK Arduino Architecture
+@startuml
+title Cryptnox SDK Arduino - Layered architecture
 
-!theme plain
-scale 1.5
-
-skinparam backgroundColor #FEFEFE
-skinparam classBackgroundColor #E8F4FC
-skinparam classBorderColor #2C7BB6
-skinparam classFontColor #1A1A1A
-skinparam classFontSize 16
-skinparam classAttributeFontSize 14
-skinparam stereotypeFontColor #666666
-skinparam stereotypeFontSize 14
-skinparam arrowColor #2C7BB6
-skinparam arrowFontSize 14
-skinparam packageBackgroundColor #F5F5F5
-skinparam packageBorderColor #CCCCCC
-skinparam packageFontSize 18
-skinparam noteFontSize 14
-skinparam titleFontSize 24
-skinparam defaultFontName "Segoe UI"
-skinparam defaultFontSize 14
-skinparam wrapWidth 300
-
-title <size:28>Cryptnox SDK Arduino - Architecture Overview</size>
-
-' ============================================
-' PACKAGES
-' ============================================
-
-package "Cryptnox SDK" <<Frame>> {
-
-    abstract class NFCDriver <<interface>> {
-        + {abstract} begin() : bool
-        + {abstract} inListPassiveTarget() : bool
-        + {abstract} sendAPDU(apdu, apduLen, response, responseLen) : bool
-        + {abstract} readUID(uid, uidLength) : bool
-        + {abstract} resetReader() : void
-        + {abstract} printFirmwareVersion() : bool
+package "Cryptnox SDK Cpp" <<Frame>> {
+package "Library" {
+    class CryptnoxWallet {
+        + CryptnoxWallet(driver, logger)
+        + begin() : bool
+        + connect(session) : bool
+        + disconnect(session) : void
+        + getCardInfo(session) : void
+        + verifyPin(session) : void
         --
-        + ~NFCDriver()
+        - driver : CW_NfcTransport&
+        - logger : CW_Logger&
+        - secure : CW_SecureChannel
+        --
+        - isSecureChannelOpen(session) : bool
+    }
+}
+
+package "Secure stack" {
+    class CW_SecureChannel {
+        + selectApdu(driver, logger) : bool
+        + getCardCertificate(driver, logger, ...) : bool
+        + extractCardEphemeralKey(cert, pubKey) : bool
+        + openSecureChannel(session, driver, logger, ...) : bool
+        + mutuallyAuthenticate(session, driver, logger, ...) : bool
+        + aesCbcEncrypt(session, driver, logger, ...) : void
+        + aesCbcDecrypt(session, ...) : bool
+        + checkStatusWord(...) : bool
+        + printApdu(logger, apdu, length, label) : void
+        --
+        - crypto : CW_CryptoProvider
     }
 
-    abstract class SerialDriver <<interface>> {
-        + {abstract} begin(baudRate) : bool
-        + {abstract} print(...) : void
-        + {abstract} println(...) : void
-        --
-        + ~SerialDriver()
-    }
-
-    class CW_SecureSession <<struct>> {
+    class CW_SecureSession {
         + aesKey[CW_AESKEY_SIZE] : uint8_t
         + macKey[CW_MACKEY_SIZE] : uint8_t
         + iv[CW_IV_SIZE] : uint8_t
@@ -57,79 +42,74 @@ package "Cryptnox SDK" <<Frame>> {
         + CW_SecureSession()
         + clear() : void
     }
+}
 
-    class CryptnoxWallet <<core>> {
-        - driver : NFCDriver&
-        - serial : SerialDriver&
-        --
-        + CryptnoxWallet(driver : NFCDriver&, serial : SerialDriver&)
-        + begin() : bool
-        + processCard() : bool
-        + selectApdu() : bool
-        + getCardCertificate(cardEphemeralPubKey, length) : bool
-        + openSecureChannel(salt, pubKey, privKey, curve) : bool
-        + mutuallyAuthenticate(session, salt, pubKey, privKey, curve, cardPubKey) : bool
-        + readUID(uidBuffer, uidLength) : bool
-        + printPN532FirmwareVersion() : bool
-        + extractCardEphemeralKey(cert, pubKey, fullKey) : bool
-        + printApdu(apdu, length, label) : void
-        + checkStatusWord(response, len, sw1, sw2) : bool
-        + getCardInfo(session) : void
-        + verifyPin(session) : void
-        + aes_cbc_encrypt(session, apdu, apduLen, data, dataLen) : void
-        + aes_cbc_decrypt(session, response, len, mac) : bool
-        --
-        - {static} uECC_RNG(dest, size) : int
+package "Crypto abstraction" {
+    abstract class CW_CryptoProvider {
+        + sha512(data, len, out) : bool
+        + aesCbcEncrypt(key, iv, data, len, out) : bool
+        + aesCbcDecrypt(key, iv, data, len, out) : bool
+        + ecdh(pubKey, privKey, secret) : bool
+        + random(out, len) : bool
+        + generateKeyPair(pubKey, privKey, curve) : bool
     }
 
-    enum PN532Interface <<enumeration>> {
-        SPI_HARDWARE
-        SPI_SOFTWARE
-        I2C
-        UART
+    class ArduinoCryptoProvider {
+        + sha512(data, len, out) : bool
+        + aesCbcEncrypt(key, iv, data, len, out) : bool
+        + aesCbcDecrypt(key, iv, data, len, out) : bool
+        + ecdh(pubKey, privKey, secret) : bool
+        + random(out, len) : bool
+        + generateKeyPair(pubKey, privKey, curve) : bool
+        --
+        - aes : AESLib
+        - sha : SHA512
     }
+}
 
-    class PN532Adapter <<adapter>> {
-        - serial : SerialDriver*
-        - interface : PN532Interface
-        - nfc : Adafruit_PN532*
-        --
-        + PN532Adapter(serialDriver, ssPin, theSPI) <<SPI>>
-        + PN532Adapter(serialDriver, clk, miso, mosi, ss) <<SW-SPI>>
-        + PN532Adapter(serialDriver, irqPin, resetPin, wire) <<I2C>>
-        + PN532Adapter(serialDriver, resetPin, uartSerial) <<UART>>
-        + ~PN532Adapter()
-        + PN532Adapter(const PN532Adapter&) = delete
-        + operator=(const PN532Adapter&) = delete
-        --
+package "Transport" {
+    abstract class CW_NfcTransport {
         + begin() : bool
-        + readUID(uidBuffer, uidLength) : bool
-        + sendAPDU(apdu, apduLen, response, responseLen) : bool
         + inListPassiveTarget() : bool
+        + sendAPDU(apdu, apduLen, response, responseLen) : bool
         + resetReader() : void
         + printFirmwareVersion() : bool
     }
 
-    class ArduinoSerialAdapter <<adapter>> {
-        - _serial : HardwareSerial*
+    class PN532Adapter {
+        + begin() : bool
+        + inListPassiveTarget() : bool
+        + sendAPDU(apdu, apduLen, response, responseLen) : bool
+        + resetReader() : void
+        + printFirmwareVersion() : bool
         --
-        + ArduinoSerialAdapter()
-        + ArduinoSerialAdapter(serial : HardwareSerial*)
-        + ~ArduinoSerialAdapter()
-        + ArduinoSerialAdapter(const ArduinoSerialAdapter&) = delete
-        + operator=(const ArduinoSerialAdapter&) = delete
-        --
+        - nfc : Adafruit_PN532*
+    }
+}
+
+package "Logging" {
+    abstract class CW_Logger {
         + begin(baudRate) : bool
         + print(...) : void
         + println(...) : void
     }
+
+    class ArduinoLoggerAdapter {
+        + ArduinoLoggerAdapter(serial)
+        + begin(baudRate) : bool
+        + print(...) : void
+        + println(...) : void
+        --
+        - serial : HardwareSerial*
+    }
+}
 }
 
 package "External Libraries" <<Frame>> #FFFDE7 {
     
     class Adafruit_PN532 <<library>> {
         + begin() : void
-        + inDataExchange(send, sendLen, response, responseLen) : bool
+        + inDataExchange() : bool
         + readPassiveTargetID() : bool
         + SAMConfig() : void
         + getFirmwareVersion() : uint32_t
@@ -160,74 +140,27 @@ package "External Libraries" <<Frame>> #FFFDE7 {
     }
 }
 
-' ============================================
-' RELATIONSHIPS
-' ============================================
+' ==============================
+' Relations principales
+' ==============================
 
-NFCDriver <|-- PN532Adapter : implements
-SerialDriver <|-- ArduinoSerialAdapter : implements
-CryptnoxWallet o--> "1" NFCDriver : uses
-CryptnoxWallet o--> "1" SerialDriver : uses
-CryptnoxWallet ..> CW_SecureSession : "creates & passes"
-PN532Adapter o--> "1" SerialDriver : uses
-PN532Adapter --> PN532Interface : uses
-PN532Adapter *--> "1" Adafruit_PN532 : owns
-ArduinoSerialAdapter *--> "1" HardwareSerial : wraps
+CryptnoxWallet --> CW_SecureChannel
+CryptnoxWallet ..> CW_Logger
+CryptnoxWallet ..> CW_NfcTransport
+CW_SecureChannel *.. CW_SecureSession
+CW_SecureChannel ..> CW_CryptoProvider
+CW_SecureChannel ..> CW_NfcTransport
+CW_SecureChannel ..> CW_Logger
 
-CryptnoxWallet ..> AESLib : uses
-CryptnoxWallet ..> uECC : uses
-CryptnoxWallet ..> SHA512 : uses
+CW_CryptoProvider <|.. ArduinoCryptoProvider
+CW_NfcTransport <|.. PN532Adapter
+CW_Logger <|.. ArduinoLoggerAdapter
 
-Adafruit_PN532 -[hidden]- AESLib
-SerialDriver -[hidden]- NFCDriver
+ArduinoLoggerAdapter ..> HardwareSerial
 
-' ============================================
-' NOTES
-' ============================================
-
-note right of CryptnoxWallet
-  **Core SDK Class**
-  Manages secure communication
-  with Cryptnox smart cards:
-  * APDU commands
-  * Secure channel (ECDH + AES)
-  * PIN verification
-  * Key derivation (SHA-512)
-end note
-
-note top of CW_SecureSession
-  **Reentrant Session Context**
-  Holds cryptographic state
-  as a stack-local struct:
-  * AES encryption key (Kenc)
-  * MAC key (Kmac)
-  * Rolling IV for AES-CBC
-  Passed by reference to
-  crypto functions for reentrancy.
-end note
-
-note bottom of PN532Adapter
-  **Hardware Abstraction**
-  Supports multiple interfaces:
-  * Hardware SPI (fast)
-  * Software SPI (flexible pins)
-  * I2C (2-wire)
-  * UART (serial)
-end note
-
-note right of NFCDriver
-  **Driver Interface**
-  Allows swapping NFC hardware
-  without changing wallet logic
-end note
-
-note left of SerialDriver
-  **Serial Interface**
-  Abstracts serial output for:
-  * Different UART ports
-  * LCD displays
-  * Network logging
-  * Unit testing (mock)
-end note
+ArduinoCryptoProvider *.. AESLib
+ArduinoCryptoProvider ..> uECC
+ArduinoCryptoProvider *.. SHA512
+PN532Adapter ..> Adafruit_PN532
 
 @enduml
