@@ -2,9 +2,9 @@
  * @file examples.ino
  * @brief Example demonstrating the use of CryptnoxWallet with a PN532 module on Arduino.
  *
- * This sketch initializes the I2C bus and the PN532 NFC reader using the
+ * This sketch initializes the SPI bus and the PN532 NFC reader using the
  * CryptnoxWallet class. It continuously detects NFC/ISO-DEP cards and
- * processes wallet-specific APDU commands.
+ * processes wallet-specific APDU commands with granular step-by-step control.
  */
 
 #include "PN532Adapter.h"
@@ -24,8 +24,8 @@ CryptnoxWallet wallet(nfc, serialAdapter);
 /**
  * @brief Arduino setup function.
  *
- * Initializes the serial port for debugging and the I2C bus.
- * The actual PN532 initialization is performed later in loop().
+ * Initializes the serial port for debugging and the SPI bus.
+ * The PN532 module is initialized via wallet.begin().
  */
 void setup() {
     serialAdapter.begin(115200);
@@ -39,7 +39,6 @@ void setup() {
     /* Initialize the PN532 module */
     if (wallet.begin()) {
         serialAdapter.println(F("PN532 initialized"));
-        wallet.printPN532FirmwareVersion();
     } else {
         serialAdapter.println(F("PN532 init failed"));
         /* Halt program if initialization fails */
@@ -50,18 +49,33 @@ void setup() {
 /**
  * @brief Arduino main loop.
  *
- * The CryptnoxWallet object is declared static so that it persists
- * between iterations. The PN532 module is initialized only once
- * using a static 'initialized' flag.
- *
- * On each loop iteration, the code checks for the presence of a
- * passive NFC/ISO-DEP card and processes wallet APDU commands.
+ * Demonstrates simplified card connection and processing:
+ * 1. Connect to card and establish secure channel (combines detection and channel setup)
+ * 2. Verify PIN
+ * 3. Get card information
+ * 4. Clear session and reset reader
  */
 void loop() {
     
-    /* Process any detected NFC card */
-    (void)wallet.processCard();
-
-    /* Wait 1 second before next loop iteration */
+    /* Step 1: Connect to card and establish secure channel */
+    CW_SecureSession session;
+    if (wallet.connect(session)) {
+        serialAdapter.println(F("Card connected and secure channel established"));
+    
+        /* Step 2: Verify PIN (checks secure channel internally) */
+        serialAdapter.println(F("Verifying PIN..."));
+        wallet.verifyPin(session);
+    
+        /* Step 3: Get card information (checks secure channel internally) */
+        serialAdapter.println(F("Getting card information..."));
+        wallet.getCardInfo(session);
+    
+        serialAdapter.println(F("Card processed successfully"));
+    }
+    
+    /* Always disconnect to reset reader for next card detection */
+    wallet.disconnect(session);
+    
+    /* Wait before next iteration */
     delay(1000);
 }

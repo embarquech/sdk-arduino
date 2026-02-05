@@ -116,16 +116,6 @@ public:
     bool begin() override;
 
     /**
-     * @brief Read the UID of the currently detected NFC card.
-     *
-     * @param uidBuffer Pointer to buffer where the UID will be stored.
-     * @param uidLength Reference to a variable to receive the UID length.
-     * @return true if a card was detected and the UID read successfully.
-     * @return false otherwise.
-     */
-    bool readUID(uint8_t* uidBuffer, uint8_t &uidLength) override;
-
-    /**
      * @brief Send an APDU command to the NFC card and receive its response.
      *
      * @param apdu Pointer to APDU command buffer.

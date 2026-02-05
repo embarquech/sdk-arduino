@@ -79,104 +79,58 @@ public:
     /**
      * @brief Initialize the PN532 module via the underlying driver.
      *
-     * Performs SAM configuration and checks firmware version.
+     * Performs SAM configuration and prints firmware version.
      *
      * @return true if the module was successfully initialized, false otherwise.
      */
     bool begin() {
-        return driver.begin();
+        bool ret = driver.begin();
+        if (ret) {
+            printPN532FirmwareVersion();
+        }
+        return ret;
     }
 
     /**
-     * @brief Detect and process an NFC card for Cryptnox wallet operations.
-     *
-     * If an ISO-DEP card is detected, SELECT APDU is sent and certificate is retrieved.
-     * If only a passive card is detected, the UID is printed.
-     *
-     * @return true if a card was successfully processed, false otherwise.
-     */
-    bool processCard();
-
-    /**
-     * @brief Send the SELECT APDU to select the wallet application.
-     *
-     * @return true if the APDU exchange succeeded, false otherwise.
-     */
-    bool selectApdu();
-
-    /**
-    * @brief Retrieves the card's ephemeral public key with a GET CARD CERTIFICATE APDU.
+    * @brief Connect to the Cryptnox card and establish a secure channel.
     *
-    * Sends a GET CARD CERTIFICATE command to the card, validates the response,
-    * and extracts the ephemeral EC P-256 public key used for ECDH in the secure channel.
+    * The function first detects if an ISO-DEP capable card is present, then establishes a secure channel.
+    * It first detects if an ISO-DEP capable card is present, then establishes a secure channel
+    * by selecting the Cryptnox application, retrieving the card certificate, performing ECDH key
+    * exchange, and mutually authenticating with the card.
     *
-    * @param[out] cardEphemeralPubKey Buffer to store the 65-byte card ephemeral public key.
-    * @param[in,out] cardEphemeralPubKeyLength Input: size of the buffer; Output: actual key length (65 bytes).
-    * @return true if the APDU exchange and key extraction succeeded, false otherwise.
+    * @param[out] session Reference to the secure session to be populated with keys and IV.
+    * @return true if the card was detected and secure channel was established successfully, false otherwise.
     */
-    bool getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &cardEphemeralPubKeyLength);
+    bool connect(CW_SecureSession& session);
 
     /**
-     * @brief Read the UID of a detected card.
-     *
-     * @param uidBuffer Pointer to buffer to store the UID.
-     * @param uidLength Reference to variable to store UID length.
-     * @return true if the UID was read successfully, false otherwise.
-     */
-    bool readUID(uint8_t* uidBuffer, uint8_t &uidLength);
-
-    /**
-    * @brief Print detailed firmware information of the PN532 module.
+    * @brief Establish a secure channel with the Cryptnox card.
     *
-    * Retrieves the firmware version, parses IC type, major/minor versions,
-    * and supported features, then prints all details to the Serial console.
+    * This function handles all the steps required to establish a secure session:
+    * - Selects the Cryptnox application
+    * - Retrieves the card certificate
+    * - Performs ECDH key exchange
+    * - Mutually authenticates with the card
     *
-    * @return true if the PN532 module was detected and information printed, false otherwise.
+    * @param[out] session Reference to the secure session to be populated with keys and IV.
+    * @return true if secure channel was established successfully, false otherwise.
     */
-    bool printPN532FirmwareVersion();
+    bool establishSecureChannel(CW_SecureSession& session);
 
     /**
-    * @brief Retrieves the initial 32-byte salt from the card for starting a secure channel.
+    * @brief Disconnect from the Cryptnox card and clear the secure session.
     *
-    * This function sends the APDU command to the card to get the session salt, which is
-    * required for the subsequent key derivation in the secure channel setup.
+    * This function securely clears all session keys and resets the NFC reader
+    * for the next card detection. 
     *
-    * @param[out] salt Pointer to a 32-byte buffer where the card-provided salt will be stored.
-    * @return true if the APDU exchange succeeded and the salt was retrieved, false otherwise.
-    */
-    bool openSecureChannel(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve);
-
-    bool mutuallyAuthenticate(CW_SecureSession& session, const uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve, uint8_t* cardEphemeralPubKey);
-
-    /**
-    * @brief Extracts the card's ephemeral EC P-256 public key from the certificate.
+    * IMPORTANT: This function MUST be called at the end of each card processing
+    * iteration, even if connect() failed. Without calling disconnect(), the
+    * reader will not reset and subsequent card detections will fail.
     *
-    * @param[in]  cardCertificate        Pointer to the full card certificate response.
-    * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
-    *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
-    * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
-    *                                    Can be nullptr if not needed.
+    * @param[in,out] session Reference to the secure session to clear.
     */
-    bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = nullptr);
-
-    /**
-    * @brief Print an APDU in hex format with optional label.
-    * @param apdu Pointer to the APDU bytes.
-    * @param length Number of bytes in the APDU.
-    * @param label Optional label for printing (default: "APDU to send").
-    */
-    void printApdu(const uint8_t* apdu, uint8_t length, const char* label = "APDU to send");
-
-    /**
-    * @brief Checks the status word (SW1/SW2) at the end of an APDU response.
-    * 
-    * @param response        Pointer to the APDU response buffer.
-    * @param responseLength  Actual length of the response buffer.
-    * @param sw1Expected     Expected value for SW1 (e.g., 0x90).
-    * @param sw2Expected     Expected value for SW2 (e.g., 0x00).
-    * @return true if the last two bytes match SW1/SW2, false otherwise.
-    */
-    bool checkStatusWord(const uint8_t* response, uint8_t responseLength, uint8_t sw1Expected, uint8_t sw2Expected);
+    void disconnect(CW_SecureSession& session);
 
     /**
     * @brief Sends a secured GET CARD INFO APDU.
@@ -189,6 +143,82 @@ public:
     * @param[in,out] session Reference to the secure session containing keys and IV.
     */
     void verifyPin(CW_SecureSession& session);
+
+private:
+    NFCDriver& driver; /**< PN532 driver for low-level NFC operations */
+    SerialDriver& serial; /**< Serial driver for debug output */
+
+        /**
+     * @brief Send the SELECT APDU to select the wallet application.
+     *
+     * @return true if the APDU exchange succeeded, false otherwise.
+     */
+     bool selectApdu();
+
+     /**
+     * @brief Retrieves the card's ephemeral public key with a GET CARD CERTIFICATE APDU.
+     *
+     * Sends a GET CARD CERTIFICATE command to the card, validates the response,
+     * and extracts the ephemeral EC P-256 public key used for ECDH in the secure channel.
+     *
+     * @param[out] cardEphemeralPubKey Buffer to store the 65-byte card ephemeral public key.
+     * @param[in,out] cardEphemeralPubKeyLength Input: size of the buffer; Output: actual key length (65 bytes).
+     * @return true if the APDU exchange and key extraction succeeded, false otherwise.
+     */
+     bool getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &cardEphemeralPubKeyLength);
+ 
+     /**
+     * @brief Print detailed firmware information of the PN532 module.
+     *
+     * Retrieves the firmware version, parses IC type, major/minor versions,
+     * and supported features, then prints all details to the Serial console.
+     *
+     * @return true if the PN532 module was detected and information printed, false otherwise.
+     */
+     bool printPN532FirmwareVersion();
+ 
+     /**
+     * @brief Retrieves the initial 32-byte salt from the card for starting a secure channel.
+     *
+     * This function sends the APDU command to the card to get the session salt, which is
+     * required for the subsequent key derivation in the secure channel setup.
+     *
+     * @param[out] salt Pointer to a 32-byte buffer where the card-provided salt will be stored.
+     * @return true if the APDU exchange succeeded and the salt was retrieved, false otherwise.
+     */
+     bool openSecureChannel(uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve);
+ 
+     bool mutuallyAuthenticate(CW_SecureSession& session, const uint8_t* salt, uint8_t* clientPublicKey, uint8_t* clientPrivateKey, const uECC_Curve_t* sessionCurve, uint8_t* cardEphemeralPubKey);
+ 
+     /**
+     * @brief Extracts the card's ephemeral EC P-256 public key from the certificate.
+     *
+     * @param[in]  cardCertificate        Pointer to the full card certificate response.
+     * @param[out] cardEphemeralPubKey    Buffer to store **64 bytes** (X||Y coordinates only, no 0x04 prefix)
+     *                                    for use with uECC_shared_secret. Must be at least 64 bytes.
+     * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
+     *                                    Can be nullptr if not needed.
+     */
+     bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = nullptr);
+ 
+     /**
+     * @brief Print an APDU in hex format with optional label.
+     * @param apdu Pointer to the APDU bytes.
+     * @param length Number of bytes in the APDU.
+     * @param label Optional label for printing (default: "APDU to send").
+     */
+     void printApdu(const uint8_t* apdu, uint8_t length, const char* label = "APDU to send");
+ 
+     /**
+     * @brief Checks the status word (SW1/SW2) at the end of an APDU response.
+     * 
+     * @param response        Pointer to the APDU response buffer.
+     * @param responseLength  Actual length of the response buffer.
+     * @param sw1Expected     Expected value for SW1 (e.g., 0x90).
+     * @param sw2Expected     Expected value for SW2 (e.g., 0x00).
+     * @return true if the last two bytes match SW1/SW2, false otherwise.
+     */
+     bool checkStatusWord(const uint8_t* response, uint8_t responseLength, uint8_t sw1Expected, uint8_t sw2Expected);
 
     /**
     * @brief Encrypts data and sends a secured APDU using AES-CBC and MAC.
@@ -212,9 +242,17 @@ public:
     */
     bool aes_cbc_decrypt(CW_SecureSession& session, uint8_t *response, size_t response_len, uint8_t * mac_value);
 
-private:
-    NFCDriver& driver; /**< PN532 driver for low-level NFC operations */
-    SerialDriver& serial; /**< Serial driver for debug output */
+    /**
+     * @brief Check if the secure channel is open.
+     *
+     * This function checks if the secure channel has been established by verifying
+     * if the session keys have been initialized (non-zero). A secure channel is
+     * considered open if the AES key in the session is non-zero.
+     *
+     * @param[in] session Reference to the secure session to check.
+     * @return true if the secure channel is open (session keys are initialized), false otherwise.
+     */
+    bool isSecureChannelOpen(const CW_SecureSession& session) const;
 
     /**
      * @brief RNG callback for micro-ecc library.

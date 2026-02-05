@@ -26,84 +26,124 @@
 
 AESLib aesLib;
 
-/**
- * @brief Processes a detected NFC card.
- *
- * Selects the Cryptnox application, establishes a secure channel,
- * authenticates the card, and verifies the PIN.
- *
- * @return true if the Cryptnox card was successfully processed, false otherwise.
- */
- /* MISRA C:2012 Rule 8.9 deviation:
-   processCard() is called externally via library */
-// cppcheck-suppress unusedFunction
-bool CryptnoxWallet::processCard() {
-    bool ret = false;
-
-    /* Check for ISO-DEP capable target (APDU-capable card) */
-    if (driver.inListPassiveTarget()) {
-        /* Try selecting Cryptnox app */
-        if (selectApdu()) {
-            /* Local response buffer */
-            uint8_t cardCertificate[GETCARDCERTIFICATE_IN_BYTES];
-            uint8_t cardCertificateLength = 0U;
-            uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
-            uint8_t clientPrivateKey[32];
-            uint8_t clientPublicKey[64];
-            uint8_t cardEphemeralPubKey[CARDEPHEMERALPUBKEY_SIZE];
-            const uECC_Curve_t * sessionCurve = uECC_secp256r1();
-
-            /* Create secure session context (stack-local for reentrancy) */
-            CW_SecureSession session;
-
-            /* Get certificate and establish secure channel */
-            getCardCertificate(cardCertificate, cardCertificateLength);
-            extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey);
-            openSecureChannel(openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve);
-            mutuallyAuthenticate(session, openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve, cardEphemeralPubKey);
-            verifyPin(session);
-            
-            /* Securely clear session keys before leaving scope */
-            session.clear();
-
-            /* Wait to see result */
-            delay(5000U);
-
-            ret = true;
-        }
-    }
-    else {
-        /* Basic tag: read its UID */
-        uint8_t uid[7];
-        uint8_t uidLength;
-        if (driver.readUID(uid, uidLength)) {
-            serial.print(F("Card UID: "));
-            for (uint8_t i = 0; i < uidLength; i++) {
-                if (uid[i] < 16) serial.print(F("0"));
-                serial.print(uid[i], HEX);
-                serial.print(F(" "));
-            }
-            serial.println();
-        }
-    }
-
-    /* Reset reader in for the card to be detected by inListPassiveTarget again */
-    driver.resetReader();
-    
-    return ret;
-}
-
-/* Simple forward to PN532 driver for UID read */
-bool CryptnoxWallet::readUID(uint8_t* uidBuffer, uint8_t &uidLength) {
-    return driver.readUID(uidBuffer, uidLength);
-}
-
 /* Print PN532 firmware version via driver */
 /* MISRA C:2012 Rule 8.9 deviation:
    printPN532FirmwareVersion() is called externally via PN532 driver/library */
-// cppcheck-suppress unusedFunction
 bool CryptnoxWallet::printPN532FirmwareVersion() {
     return driver.printFirmwareVersion();
+}
+
+/**
+ * @brief Connect to the Cryptnox card and establish a secure channel.
+ *
+ * The function first detects if an ISO-DEP capable card is present, then establishes a secure channel
+ * by selecting the Cryptnox application, retrieving the card certificate, performing ECDH key
+ * exchange, and mutually authenticating with the card.
+ *
+ * @param[out] session Reference to the secure session to be populated with keys and IV.
+ * @return true if the card was detected and secure channel was established successfully, false otherwise.
+ */
+// cppcheck-suppress unusedFunction
+ bool CryptnoxWallet::connect(CW_SecureSession& session) {
+    /* First, detect if an ISO-DEP capable card is present */
+    if (!driver.inListPassiveTarget()) {
+        return false;  /* No card detected */
+    }
+
+    /* If card is detected, establish secure channel */
+    return establishSecureChannel(session);
+}
+
+/**
+ * @brief Establish a secure channel with the Cryptnox card.
+ *
+ * Handles application selection, certificate retrieval, ECDH key exchange,
+ * and mutual authentication to establish session keys.
+ *
+ * @param[out] session Reference to the secure session to be populated.
+ * @return true if secure channel was established, false otherwise.
+ */
+bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
+    bool ret = false;
+
+    /* Try selecting Cryptnox app */
+    if (selectApdu()) {
+        /* Local buffers for certificate */
+        uint8_t cardCertificate[GETCARDCERTIFICATE_IN_BYTES];
+        uint8_t cardCertificateLength = 0U;
+
+        /* Get certificate and establish secure channel */
+        if (getCardCertificate(cardCertificate, cardCertificateLength)) {
+            uint8_t cardEphemeralPubKey[CARDEPHEMERALPUBKEY_SIZE];
+            if (extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey)) {
+                uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
+                uint8_t clientPrivateKey[32];
+                uint8_t clientPublicKey[64];
+                const uECC_Curve_t* sessionCurve = uECC_secp256r1();
+                if (openSecureChannel(openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve)) {
+                    if (mutuallyAuthenticate(session, openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve, cardEphemeralPubKey)) {
+                        serial.println(F("Secure channel established"));
+                        ret = true;
+                    } else {
+                        serial.println(F("Mutual authentication failed"));
+                    }
+                } else {
+                    serial.println(F("Failed to open secure channel"));
+                }
+            } else {
+                serial.println(F("Failed to extract card ephemeral key"));
+            }
+        } else {
+            serial.println(F("Failed to get card certificate"));
+        }
+    } else {
+        serial.println(F("Failed to select Cryptnox application"));
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Disconnect from the Cryptnox card and clear the secure session.
+ *
+ * This function securely clears all session keys and resets the NFC reader
+ * for the next card detection. Should be called when done with card operations.
+ *
+ * @param[in,out] session Reference to the secure session to clear.
+ */
+// cppcheck-suppress unusedFunction
+void CryptnoxWallet::disconnect(CW_SecureSession& session) {
+    /* Only clear session keys if secure channel was open */
+    if (isSecureChannelOpen(session)) {
+        session.clear();
+    }
+    
+    /* Always reset reader for next card detection */
+    driver.resetReader();
+}
+
+/**
+ * @brief Check if the secure channel is open.
+ *
+ * This function checks if the secure channel has been established by verifying
+ * if the session keys have been initialized (non-zero). A secure channel is
+ * considered open if the AES key in the session is non-zero.
+ *
+ * The implementation follows the same pattern as the Python SDK, which checks
+ * if the AES key exists to determine if the secure channel is open.
+ *
+ * @param[in] session Reference to the secure session to check.
+ * @return true if the secure channel is open (session keys are initialized), false otherwise.
+ */
+bool CryptnoxWallet::isSecureChannelOpen(const CW_SecureSession& session) const {
+    /* Check if AES key is non-zero (initialized) */
+    /* If all bytes are zero, the secure channel is not open */
+    for (uint8_t i = 0U; i < CW_AESKEY_SIZE; i++) {
+        if (session.aesKey[i] != 0U) {
+            return true;  /* At least one non-zero byte found, channel is open */
+        }
+    }
+    return false;  /* All bytes are zero, channel is not open */
 }
 
 /* SELECT APDU to activate Cryptnox application */
@@ -577,6 +617,7 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
         }
 
         serial.println();
+        ret = true;  /* Success */
     }
 
     return ret;
@@ -590,9 +631,37 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
  *
  * @param[in,out] session Reference to the secure session containing keys and IV.
  */
+// cppcheck-suppress unusedFunction
 void CryptnoxWallet::verifyPin(CW_SecureSession& session) {
+    /* Verify secure channel is open before proceeding */
+    if (!isSecureChannelOpen(session)) {
+        serial.println(F("Error: Secure channel not open. Cannot verify PIN."));
+        return;
+    }
+    
     uint8_t data[] = { 0x31, 0x32, 0x33, 0x34 }; /* PIN code 1234 */
     uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
+    aes_cbc_encrypt(session, apdu, sizeof(apdu), data, sizeof(data));
+}
+
+/**
+ * @brief Sends a secured GET CARD INFO APDU to retrieve card information.
+ *
+ * This function sends a GET DATA APDU (INS=0xFA) to retrieve card status
+ * and information from the Cryptnox card over the secure channel.
+ *
+ * @param[in,out] session Reference to the secure session containing keys and IV.
+ */
+// cppcheck-suppress unusedFunction
+void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
+    /* Verify secure channel is open before proceeding */
+    if (!isSecureChannelOpen(session)) {
+        serial.println(F("Error: Secure channel not open. Cannot get card info."));
+        return;
+    }
+    
+    uint8_t data[] = { 0x00 };  /* Empty data field */
+    uint8_t apdu[] = {0x80, 0xFA, 0x00, 0x00};  /* GET DATA APDU */
     aes_cbc_encrypt(session, apdu, sizeof(apdu), data, sizeof(data));
 }
 
