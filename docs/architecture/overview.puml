@@ -66,27 +66,17 @@ package "Transport" {
         + begin()
         + inListPassiveTarget()
         + sendAPDU(logger, ...)
-        + readUID(...)
         + resetReader()
         + printFirmwareVersion(logger, ...)
-    }
-
-    enum PN532Interface {
-        SPI_HARDWARE
-        SPI_SOFTWARE
-        I2C
-        UART
     }
 
     class PN532Adapter {
         + begin()
         + sendAPDU(logger, ...)
         + inListPassiveTarget()
-        + readUID(...)
         + resetReader()
         + printFirmwareVersion(logger, ...)
         --
-        - interface : PN532Interface
         - nfc : Adafruit_PN532*
     }
 }
@@ -155,7 +145,6 @@ CW_SecureChannel --> CW_NfcTransport
 
 CW_CryptoProvider <|.. ArduinoCryptoProvider
 CW_NfcTransport <|.. PN532Adapter
-PN532Adapter --> PN532Interface
 CW_Logger <|.. ArduinoLoggerAdapter
 
 

@@ -168,15 +168,6 @@ private:
      bool getCardCertificate(uint8_t* cardEphemeralPubKey, uint8_t &cardEphemeralPubKeyLength);
  
      /**
-      * @brief Read the UID of a detected card.
-      *
-      * @param uidBuffer Pointer to buffer to store the UID.
-      * @param uidLength Reference to variable to store UID length.
-      * @return true if the UID was read successfully, false otherwise.
-      */
-     bool readUID(uint8_t* uidBuffer, uint8_t &uidLength);
- 
-     /**
      * @brief Print detailed firmware information of the PN532 module.
      *
      * Retrieves the firmware version, parses IC type, major/minor versions,
