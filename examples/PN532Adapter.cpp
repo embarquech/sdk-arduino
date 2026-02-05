@@ -1,7 +1,5 @@
 #include "PN532Adapter.h"
 
-#define PN532BASE_READUID_TIMEOUT_MS    (3000U)
-
 /**
  * @brief Construct a PN532Adapter using hardware SPI.
  *
@@ -82,18 +80,6 @@ PN532Adapter::~PN532Adapter() {
 bool PN532Adapter::begin() {
     nfc->begin();
     return nfc->getFirmwareVersion() != 0;
-}
-
-/**
- * @brief Read the UID of the currently detected NFC card.
- *
- * @param uidBuffer Buffer to store the UID.
- * @param uidLength Variable to store the UID length.
- * @return true if a card was detected and UID read successfully.
- * @return false otherwise.
- */
-bool PN532Adapter::readUID(uint8_t* uidBuffer, uint8_t &uidLength) {
-    return nfc->readPassiveTargetID(PN532_MIFARE_ISO14443A, uidBuffer, &uidLength, PN532BASE_READUID_TIMEOUT_MS);
 }
 
 /**
