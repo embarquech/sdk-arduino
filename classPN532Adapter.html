@@ -138,9 +138,6 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ac512aa42da5b575aaa7422e6d2358351" id="r_ac512aa42da5b575aaa7422e6d2358351"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Adapter.html#ac512aa42da5b575aaa7422e6d2358351">begin</a> () override</td></tr>
 <tr class="memdesc:ac512aa42da5b575aaa7422e6d2358351"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initialize the PN532 module.  <br /></td></tr>
 <tr class="separator:ac512aa42da5b575aaa7422e6d2358351"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a41f94628f4cc1441cf5391a165d3e9c6" id="r_a41f94628f4cc1441cf5391a165d3e9c6"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Adapter.html#a41f94628f4cc1441cf5391a165d3e9c6">readUID</a> (uint8_t *uidBuffer, uint8_t &amp;uidLength) override</td></tr>
-<tr class="memdesc:a41f94628f4cc1441cf5391a165d3e9c6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read the UID of the currently detected NFC card.  <br /></td></tr>
-<tr class="separator:a41f94628f4cc1441cf5391a165d3e9c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2a51721c2f9c8504328a5fad57792c67" id="r_a2a51721c2f9c8504328a5fad57792c67"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classPN532Adapter.html#a2a51721c2f9c8504328a5fad57792c67">sendAPDU</a> (const uint8_t *apdu, uint16_t apduLength, uint8_t *response, uint8_t &amp;responseLength) override</td></tr>
 <tr class="memdesc:a2a51721c2f9c8504328a5fad57792c67"><td class="mdescLeft">&#160;</td><td class="mdescRight">Send an APDU command to the NFC card and receive its response.  <br /></td></tr>
 <tr class="separator:a2a51721c2f9c8504328a5fad57792c67"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -578,66 +575,6 @@ true if information was successfully retrieved. </dd>
 false if the PN532 module was not detected. </dd></dl>
 
 <p>Implements <a class="el" href="classNFCDriver.html#a323ee99750ae50ac847d1dedf9b464ba">NFCDriver</a>.</p>
-
-</div>
-</div>
-<a id="a41f94628f4cc1441cf5391a165d3e9c6" name="a41f94628f4cc1441cf5391a165d3e9c6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a41f94628f4cc1441cf5391a165d3e9c6">&#9670;&#160;</a></span>readUID()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool PN532Adapter::readUID </td>
-          <td>(</td>
-          <td class="paramtype">uint8_t *&#160;</td>
-          <td class="paramname"><em>uidBuffer</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">uint8_t &amp;&#160;</td>
-          <td class="paramname"><em>uidLength</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">override</span><span class="mlabel">virtual</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Read the UID of the currently detected NFC card. </p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">uidBuffer</td><td>Pointer to buffer where the UID will be stored. </td></tr>
-    <tr><td class="paramname">uidLength</td><td>Reference to a variable to receive the UID length. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>true if a card was detected and the UID read successfully. </dd>
-<dd>
-false otherwise.</dd></dl>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">uidBuffer</td><td>Buffer to store the UID. </td></tr>
-    <tr><td class="paramname">uidLength</td><td>Variable to store the UID length. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>true if a card was detected and UID read successfully. </dd>
-<dd>
-false otherwise. </dd></dl>
-
-<p>Implements <a class="el" href="classNFCDriver.html#ab1ac5eac6aa543c4b7d9586c7d39dba9">NFCDriver</a>.</p>
 
 </div>
 </div>

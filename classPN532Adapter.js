@@ -10,7 +10,6 @@ var classPN532Adapter =
     [ "inListPassiveTarget", "classPN532Adapter.html#ac28bae87cad3c9c0d150d2cb4c04259b", null ],
     [ "operator=", "classPN532Adapter.html#a5d7a62eca0c1763f5f1b7472be5a4741", null ],
     [ "printFirmwareVersion", "classPN532Adapter.html#a4d9c62593e27d886601acabf187ad436", null ],
-    [ "readUID", "classPN532Adapter.html#a41f94628f4cc1441cf5391a165d3e9c6", null ],
     [ "resetReader", "classPN532Adapter.html#a0aa02e9f1cb109f9faa7826e11b50b7c", null ],
     [ "sendAPDU", "classPN532Adapter.html#a2a51721c2f9c8504328a5fad57792c67", null ]
 ];
