@@ -19,7 +19,7 @@ It allows performing basic operations with the card, such as secure communicatio
 ## Supported hardware
 
 - **Cryptnox Smart cards** 💳
-- **Arduino platforms** (e.g., Arduino Uno R4) with **PN532 NFC modules**
+- **Arduino R4** with **PN532 NFC module**
 
 Get your cards here: [shop.cryptnox.com](https://shop.cryptnox.com)
 
