@@ -8,6 +8,7 @@
 <br/>
 <br/>
 
+[![Platform: Arduino R4](https://img.shields.io/badge/Platform-Arduino%20R4-blue.svg)](https://www.arduino.cc/)
 [![License: GPLv3](https://img.shields.io/badge/License-LGPLv3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
 
 `cryptnox-sdk-arduino` is a library that enables the use of **Cryptnox Smart cards** on Arduino platforms.  
