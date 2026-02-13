@@ -11,6 +11,8 @@ package "Library" {
         + disconnect(session)
         + getCardInfo(session)
         + verifyPin(session)
+        + sign(session, hash, hashLen, sig, sigLen, ...)
+        + {static} parseDerSignature(der, derLen, r, rLen, s, sLen)
         --
         - logger : CW_Logger&
         - secure : CW_SecureChannel

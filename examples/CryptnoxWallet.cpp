@@ -45,13 +45,36 @@ bool CryptnoxWallet::printPN532FirmwareVersion() {
  */
 // cppcheck-suppress unusedFunction
  bool CryptnoxWallet::connect(CW_SecureSession& session) {
-    /* First, detect if an ISO-DEP capable card is present */
-    if (!driver.inListPassiveTarget()) {
-        return false;  /* No card detected */
+    /* Retry the full card activation sequence: inListPassiveTarget + delay + SELECT.
+       When SELECT fails with PN532 status 0x1, the NFC link is broken and resending
+       SELECT alone won't help — we must re-detect the card to reset the link. */
+    const uint8_t maxAttempts = 5U;
+    for (uint8_t attempt = 0U; attempt < maxAttempts; attempt++) {
+        if (attempt > 0U) {
+            serial.print(F("Retrying card connection (attempt "));
+            serial.print((uint8_t)(attempt + 1U));
+            serial.println(F(")..."));
+            /* Reset the NFC field before retrying to give the card a clean start */
+            driver.resetReader();
+            delay(200);
+        }
+
+        /* Detect if an ISO-DEP capable card is present */
+        if (!driver.inListPassiveTarget()) {
+            continue;  /* No card detected, retry */
+        }
+
+        /* Allow the card to settle after ISO-14443-4 activation (RATS/ATS).
+           Some ISO-DEP smartcards need time before accepting the first APDU. */
+        delay(200);
+
+        /* Try to establish secure channel (includes SELECT) */
+        if (establishSecureChannel(session)) {
+            return true;
+        }
     }
 
-    /* If card is detected, establish secure channel */
-    return establishSecureChannel(session);
+    return false;  /* All attempts failed */
 }
 
 /**
@@ -171,7 +194,7 @@ bool CryptnoxWallet::selectApdu() {
 
     /* Send SELECT command */
     if (driver.sendAPDU(selectApdu, sizeof(selectApdu), response, responseLength)) {
-        if (checkStatusWord(response,responseLength, 0x90, 0x00)) {
+        if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
             serial.println(F("APDU exchange successful!"));
             ret = true;
         } else {
@@ -639,7 +662,7 @@ void CryptnoxWallet::verifyPin(CW_SecureSession& session) {
         return;
     }
     
-    uint8_t data[] = { 0x31, 0x32, 0x33, 0x34 }; /* PIN code 1234 */
+    uint8_t data[] = { 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30 }; /* PIN code 000000000 */
     uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
     aes_cbc_encrypt(session, apdu, sizeof(apdu), data, sizeof(data));
 }
@@ -666,6 +689,235 @@ void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
 }
 
 /**
+ * @brief Generates a signature using the specified key and signature type.
+ *
+ * Constructs and sends the SIGN APDU (INS=0xC0) with the hash data.
+ * The card performs signing internally and returns a DER-encoded signature,
+ * which is then parsed to extract the raw (r, s) values.
+ *
+ * Protocol reference:
+ *   APDU: [0x80, 0xC0, keyType, signatureType]
+ *   Data: hash (32 bytes) [+ PIN if not pinLessMode]
+ *   Response: DER signature → parsed to raw signature[64]
+ *
+ * @param[in] request CW_SignRequest containing session, keyType, signatureType, pin, hash.
+ * @return CW_SignResult containing signature[64] and errorCode.
+ */
+// cppcheck-suppress unusedFunction
+CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
+    CW_SignResult result;
+
+    /* Verify secure channel is open before proceeding */
+    if (!isSecureChannelOpen(request.session)) {
+        serial.println(F("Error: Secure channel not open. Cannot sign."));
+        result.errorCode = CW_INVALID_SESSION;
+        return result;
+    }
+
+    /* Validate hash parameters */
+    if (request.hash == nullptr || request.hashLength == 0U) {
+        serial.println(F("Error: Invalid parameters for sign."));
+        result.errorCode = CW_SIGN_KEY_TOO_SHORT;
+        return result;
+    }
+
+    if (request.hashLength > CW_HASH_SIZE) {
+        serial.println(F("Error: Hash too large."));
+        result.errorCode = CW_SIGN_KEY_TOO_SHORT;
+        return result;
+    }
+
+    /* Validate PIN-less mode constraints: PIN-less only allowed with k1 key types */
+    if (request.pinLessMode) {
+        if (request.keyType != CW_SIGN_PINLESS_K1) {
+            serial.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
+            result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
+            return result;
+        }
+    }
+
+    /* Compute PIN length once (find first zero byte) */
+    uint8_t pinLength = 0U;
+    if (!request.pinLessMode) {
+        for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
+            if (request.pin[i] == 0U) {
+                break;
+            }
+            pinLength++;
+        }
+        /* PIN must be 6-9 digits if provided */
+        if (pinLength > 0U && pinLength < CW_MIN_PIN_LENGTH) {
+            serial.println(F("Error: PIN too short (must be 6-9 digits)."));
+            result.errorCode = CW_SIGN_PIN_INCORRECT;
+            return result;
+        }
+    }
+
+    /* Build SIGN APDU header: CLA=0x80, INS=0xC0, P1=keyType, P2=signatureType */
+    uint8_t apdu[] = {0x80, 0xC0, request.keyType, request.signatureType};
+
+    /* Build data payload: hash + optional PIN */
+    uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
+    uint16_t dataLength = request.hashLength;
+
+    memcpy(data, request.hash, request.hashLength);
+
+    /* Append PIN if not in PIN-less mode and PIN is provided */
+    if (!request.pinLessMode && pinLength > 0U) {
+        memcpy(data + dataLength, request.pin, pinLength);
+        dataLength += pinLength;
+    }
+
+    serial.println(F("Sending SIGN APDU..."));
+
+    /* Send encrypted APDU and receive decrypted response */
+    uint8_t decryptedResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
+    uint16_t decryptedLength = 0U;
+
+    if (!aes_cbc_encrypt(request.session, apdu, sizeof(apdu), data, dataLength,
+                          decryptedResponse, &decryptedLength)) {
+        serial.println(F("Sign APDU failed."));
+        result.errorCode = CW_SIGN_NO_KEY_LOADED;
+        return result;
+    }
+
+    /* Validate DER signature format (first byte must be 0x30 = SEQUENCE tag) */
+    if (decryptedLength < 2U || decryptedResponse[0] != 0x30) {
+        serial.println(F("Error: Invalid signature data (missing DER SEQUENCE tag)."));
+        result.errorCode = CW_NOK;
+        return result;
+    }
+
+    /* Extract actual DER signature length from the DER header */
+    /* DER: 0x30 [total_content_length] 0x02 [r_len] [r] 0x02 [s_len] [s] */
+    uint8_t derContentLength = decryptedResponse[1];
+    uint8_t derTotalLength = 2U + derContentLength;  /* tag + length byte + content */
+
+    if (derTotalLength > decryptedLength) {
+        serial.println(F("Error: DER signature length exceeds response."));
+        result.errorCode = CW_NOK;
+        return result;
+    }
+
+    /* Parse DER to extract raw r and s values */
+    uint8_t r[33U] = {0U};
+    uint8_t s[33U] = {0U};
+    uint8_t rLen = 0U;
+    uint8_t sLen = 0U;
+
+    if (!parseDerSignature(decryptedResponse, derTotalLength, r, rLen, s, sLen)) {
+        serial.println(F("Error: Failed to parse DER signature."));
+        result.errorCode = CW_NOK;
+        return result;
+    }
+
+    /* Convert to fixed 32-byte r and s (strip leading zero if present, pad if short) */
+    memset(result.signature, 0U, CW_RAW_SIGNATURE_SIZE);
+
+    /* Copy r into first 32 bytes (right-aligned) */
+    if (rLen > 0U) {
+        uint8_t rSrc = 0U;
+        uint8_t rDstLen = 32U;
+        /* Strip leading zero byte (ASN.1 sign padding) */
+        if (rLen == 33U && r[0] == 0x00U) {
+            rSrc = 1U;
+            rLen = 32U;
+        }
+        if (rLen <= rDstLen) {
+            memcpy(result.signature + (rDstLen - rLen), r + rSrc, rLen);
+        }
+    }
+
+    /* Copy s into last 32 bytes (right-aligned) */
+    if (sLen > 0U) {
+        uint8_t sSrc = 0U;
+        uint8_t sDstLen = 32U;
+        /* Strip leading zero byte (ASN.1 sign padding) */
+        if (sLen == 33U && s[0] == 0x00U) {
+            sSrc = 1U;
+            sLen = 32U;
+        }
+        if (sLen <= sDstLen) {
+            memcpy(result.signature + 32U + (sDstLen - sLen), s + sSrc, sLen);
+        }
+    }
+
+    /* Print signature for debugging */
+    serial.print(F("Signature ("));
+    serial.print((uint8_t)CW_RAW_SIGNATURE_SIZE);
+    serial.println(F(" bytes):"));
+    for (uint8_t i = 0U; i < CW_RAW_SIGNATURE_SIZE; i++) {
+        serial.print(F("0x"));
+        if (result.signature[i] < 0x10U) serial.print(F("0"));
+        serial.print(result.signature[i], HEX);
+        serial.print(F(" "));
+        if ((i + 1U) % 16U == 0U && (i + 1U) != CW_RAW_SIGNATURE_SIZE) serial.println();
+    }
+    serial.println();
+
+    result.errorCode = CW_OK;
+    return result;
+}
+
+/**
+ * @brief Parse a DER-encoded ECDSA signature to extract raw r and s integer values.
+ *
+ * DER format: 0x30 [total-length] 0x02 [r-length] [r-bytes] 0x02 [s-length] [s-bytes]
+ *
+ * Note: r and s may have a leading 0x00 byte if the high bit is set (ASN.1 sign encoding).
+ * Callers should handle stripping this leading zero when converting to fixed-size values.
+ *
+ * @param[in]  der       DER-encoded signature.
+ * @param[in]  derLength Length of DER data.
+ * @param[out] r         Buffer for r value (at least 33 bytes).
+ * @param[out] rLength   Actual r length.
+ * @param[out] s         Buffer for s value (at least 33 bytes).
+ * @param[out] sLength   Actual s length.
+ * @return true on success, false on malformed DER.
+ */
+bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
+                                        uint8_t* r, uint8_t& rLength,
+                                        uint8_t* s, uint8_t& sLength) {
+    if (der == nullptr || derLength < 6U || r == nullptr || s == nullptr) {
+        return false;
+    }
+
+    /* Verify SEQUENCE tag (0x30) */
+    if (der[0] != 0x30) {
+        return false;
+    }
+
+    uint8_t pos = 2U;  /* Skip SEQUENCE tag and length */
+
+    /* Read r: INTEGER tag (0x02) + length + value */
+    if (pos >= derLength || der[pos] != 0x02) {
+        return false;
+    }
+    pos++;
+    rLength = der[pos];
+    pos++;
+    if ((pos + rLength) > derLength) {
+        return false;
+    }
+    memcpy(r, der + pos, rLength);
+    pos += rLength;
+
+    /* Read s: INTEGER tag (0x02) + length + value */
+    if (pos >= derLength || der[pos] != 0x02) {
+        return false;
+    }
+    pos++;
+    sLength = der[pos];
+    pos++;
+    if ((pos + sLength) > derLength) {
+        return false;
+    }
+    memcpy(s, der + pos, sLength);
+
+    return true;
+}
+
+/**
  * @brief Encrypts data using AES-CBC, computes a MAC, and sends the APDU to the smartcard.
  *
  * This function performs AES-CBC encryption of the given data with padding (ISO/IEC 9797-1 Method 2),
@@ -683,7 +935,10 @@ void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
  * - MAC is computed with `session.macKey` using AES-CBC with no padding.
  * - `session.iv` is updated after successful APDU response for rolling IV.
  */
-void CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t apdu[], uint16_t apduLength, const uint8_t data[], uint16_t dataLength) {
+bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t apdu[], uint16_t apduLength,
+                                      const uint8_t data[], uint16_t dataLength,
+                                      uint8_t* decryptedOutput, uint16_t* decryptedOutputLength) {
+    bool ret = false;
     uint8_t encryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
 
     /* Set padding ISO/IEC 9797-1 Method 2 algorithm */
@@ -736,26 +991,29 @@ void CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     uint8_t responseLength = sizeof(response);
     if (driver.sendAPDU(sendApdu, sizeof(sendApdu), response, responseLength)) {
         if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
-            serial.println(F("getCardInfo success."));
+            serial.println(F("Secured APDU success."));
 
             /* Rolling IVs: It is the last MAC, ie the first AES_BLOCK_SIZE bytes from the last answer */
             memcpy(session.iv, response, CW_IV_SIZE);
 
-            serial.println("macValue: ");
+            serial.println(F("macValue: "));
             for (uint8_t i = 0U; i < AES_BLOCK_SIZE; i++) {
                 serial.print(macValue[i], HEX);
-                serial.print(" ");
+                serial.print(F(" "));
             }
             serial.println();
 
-            /* Decode response */
-            aes_cbc_decrypt(session, response, responseLength, macValue);
+            /* Decode response and optionally pass decrypted data to caller */
+            ret = aes_cbc_decrypt(session, response, responseLength, macValue,
+                                  decryptedOutput, decryptedOutputLength);
         } else {
-            serial.println(F("getCardInfo APDU SW1/SW2 not expected. Error."));
+            serial.println(F("Secured APDU SW1/SW2 not expected. Error."));
         }
     } else {
         serial.println(F("APDU exchange failed."));
     }
+
+    return ret;
 }
 
 /**
@@ -771,55 +1029,76 @@ void CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
  * @param[out]    mac_value    MAC from last sent message.
  * @return true if MAC verification succeeds, false otherwise.
  */
-bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *response, size_t response_len, uint8_t * mac_value) {
+bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *response, size_t response_len,
+                                      uint8_t* mac_value,
+                                      uint8_t* decryptedOutput, uint16_t* decryptedOutputLength) {
 
-    /* Response = MAC || cipherText || SW1/2 */
+    /* Response layout: MAC(16) || cipherText(N) || SW1(1) || SW2(1) */
     uint8_t rep_mac[AES_BLOCK_SIZE];
     memcpy(rep_mac, response, AES_BLOCK_SIZE);
-    uint8_t *rep_data = response + 16U;
-    size_t cipherTextLen = response_len - 2U; /* Remove SW1/SW2 */
-    if (mac_value == NULL) {
+    uint8_t *rep_data = response + AES_BLOCK_SIZE;
+    size_t totalDataLen = response_len - 2U;            /* Remove outer SW1/SW2 */
+    size_t cipherLen = totalDataLen - AES_BLOCK_SIZE;   /* Actual ciphertext length (without MAC) */
+
+    if (mac_value == NULL || cipherLen == 0U) {
         return false;
     }
 
-    /* Compute the MAC and compare it against received one */
-    /* sizeof packet (cipherTextLen) || zero padding 15 * 0 || rep_data */
-    uint8_t mac_datar[32U] = { 0U };
-    mac_datar[0] = (cipherTextLen & 0xFF);
-    memcpy(mac_datar + 16U, rep_data, AES_BLOCK_SIZE);
+    /* --- Verify MAC (AES-CBC-MAC over [length_header(16)] || [all_ciphertext]) --- */
+    /* Build MAC input: [totalDataLen & 0xFF, 0*15] || all ciphertext bytes */
+    /* This matches Python SDK _decode(): data_mac_list + rep_data */
+    size_t macInputLen = AES_BLOCK_SIZE + cipherLen;
+    uint8_t macInput[MAX_MAC_DATA_LEN] = { 0U };
+    if (macInputLen > sizeof(macInput)) {
+        serial.println(F("Error: Response too large for MAC verification."));
+        return false;
+    }
 
+    /* First 16 bytes: length encoding + zero padding */
+    macInput[0] = (uint8_t)(totalDataLen & 0xFFU);
+    /* bytes [1..15] already zero from initialization */
+
+    /* Append ALL ciphertext (not just first block) */
+    memcpy(macInput + AES_BLOCK_SIZE, rep_data, cipherLen);
+
+    /* Compute MAC (AES-CBC-MAC with zero IV, no padding) */
     uint8_t macEncryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
-    uint8_t mac_iv[AES_BLOCK_SIZE] = { 0U }; /* Default MAC IVs */
-    /* Set no padding */
+    uint8_t mac_iv[AES_BLOCK_SIZE] = { 0U };
     aesLib.set_paddingmode(paddingMode::Null);
-    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(mac_datar), cipherTextLen, macEncryptedData, session.macKey, sizeof(session.macKey), mac_iv);
+    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(macInput), macInputLen, macEncryptedData, session.macKey, sizeof(session.macKey), mac_iv);
 
     uint8_t recomputedMacValue[AES_BLOCK_SIZE] = { 0U };
-    /* In AES CBC-MAC last block is MAC */
+    /* In AES CBC-MAC the last block is the MAC */
     uint8_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
     memcpy(recomputedMacValue, macEncryptedData + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
-    if (memcmp(rep_mac, recomputedMacValue, AES_BLOCK_SIZE) == 0U) {
+    if (memcmp(rep_mac, recomputedMacValue, AES_BLOCK_SIZE) == 0) {
         serial.println(F("MACs match"));
     } else {
         serial.println(F("MAC mismatch"));
         return false;
     }
 
-    /* Decrypt */
+    /* --- Decrypt ALL ciphertext (not just one block) --- */
     uint8_t decryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
     /* Set padding ISO/IEC 9797-1 Method 2 algorithm */
     aesLib.set_paddingmode(paddingMode::Bit);
-    /* Decode the payload using the AES key and IVs corresponding to the last MAC received by the smartcard */
-    uint16_t decryptedDataLength = aesLib.decrypt(rep_data, AES_BLOCK_SIZE, decryptedData, session.aesKey, sizeof(session.aesKey), mac_value);
+    /* Decode the full payload using the AES key and IV = last MAC sent to the card */
+    uint16_t decryptedDataLength = aesLib.decrypt(rep_data, cipherLen, decryptedData, session.aesKey, sizeof(session.aesKey), mac_value);
 
-    serial.println("Decoded data: ");
-    for (uint8_t i = 0; i < decryptedDataLength; i++) {
+    serial.println(F("Decoded data: "));
+    for (uint16_t i = 0U; i < decryptedDataLength; i++) {
         serial.print(decryptedData[i], HEX);
-        serial.print(" ");
+        serial.print(F(" "));
     }
     serial.println();
+
+    /* Copy decrypted data to output buffer if provided */
+    if (decryptedOutput != nullptr && decryptedOutputLength != nullptr) {
+        memcpy(decryptedOutput, decryptedData, decryptedDataLength);
+        *decryptedOutputLength = decryptedDataLength;
+    }
 
     return true;
 }
