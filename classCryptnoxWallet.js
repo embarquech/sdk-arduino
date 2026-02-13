@@ -6,5 +6,6 @@ var classCryptnoxWallet =
     [ "disconnect", "classCryptnoxWallet.html#a5e52a31fba0f21862e588e1546ad1898", null ],
     [ "establishSecureChannel", "classCryptnoxWallet.html#a8584e36b3c8c088ad1ee18358246262e", null ],
     [ "getCardInfo", "classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f", null ],
+    [ "sign", "classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275", null ],
     [ "verifyPin", "classCryptnoxWallet.html#af2a97d9d9db0adefe49f09488d8b3d31", null ]
 ];

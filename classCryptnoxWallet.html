@@ -91,6 +91,7 @@ $(document).ready(function(){initNavTree('classCryptnoxWallet.html',''); initRes
 <div class="header">
   <div class="summary">
 <a href="#pub-methods">Public Member Functions</a> &#124;
+<a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="classCryptnoxWallet-members.html">List of all members</a>  </div>
   <div class="headertitle"><div class="title">CryptnoxWallet Class Reference</div></div>
 </div><!--header-->
@@ -124,6 +125,15 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:af2a97d9d9db0adefe49f09488d8b3d31" id="r_af2a97d9d9db0adefe49f09488d8b3d31"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#af2a97d9d9db0adefe49f09488d8b3d31">verifyPin</a> (<a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;session)</td></tr>
 <tr class="memdesc:af2a97d9d9db0adefe49f09488d8b3d31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verifies the PIN code.  <br /></td></tr>
 <tr class="separator:af2a97d9d9db0adefe49f09488d8b3d31"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a539f73749cce012f4a973840c76d1275" id="r_a539f73749cce012f4a973840c76d1275"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structCW__SignResult.html">CW_SignResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275">sign</a> (<a class="el" href="structCW__SignRequest.html">CW_SignRequest</a> &amp;request)</td></tr>
+<tr class="memdesc:a539f73749cce012f4a973840c76d1275"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a signature using the specified key and signature type.  <br /></td></tr>
+<tr class="separator:a539f73749cce012f4a973840c76d1275"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
+Static Public Member Functions</h2></td></tr>
+<tr class="memitem:a03e08d9bb6e9e5af10a886e715c05237" id="r_a03e08d9bb6e9e5af10a886e715c05237"><td class="memItemLeft" align="right" valign="top">static bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a03e08d9bb6e9e5af10a886e715c05237">parseDerSignature</a> (const uint8_t *der, uint8_t derLength, uint8_t *r, uint8_t &amp;rLength, uint8_t *s, uint8_t &amp;sLength)</td></tr>
+<tr class="memdesc:a03e08d9bb6e9e5af10a886e715c05237"><td class="mdescLeft">&#160;</td><td class="mdescRight">Parse a DER-encoded ECDSA signature to extract raw r and s values.  <br /></td></tr>
+<tr class="separator:a03e08d9bb6e9e5af10a886e715c05237"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>High-level interface for interacting with a PN532-based wallet. </p>
@@ -224,7 +234,8 @@ Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Connect to the Cryptnox card and establish a secure channel. </p>
-<p>The function first detects if an ISO-DEP capable card is present, then establishes a secure channel. It first detects if an ISO-DEP capable card is present, then establishes a secure channel by selecting the Cryptnox application, retrieving the card certificate, performing ECDH key exchange, and mutually authenticating with the card.</p>
+<p>Detects if an ISO-DEP capable card is present, then establishes a secure channel by selecting the Cryptnox application, retrieving the card certificate, performing ECDH key exchange, and mutually authenticating with the card.</p>
+<p>Retries the full card activation sequence (NFC detection + SELECT + secure channel) up to 5 times. When the SELECT APDU fails, the NFC field is reset and the card is re-detected before retrying, which is necessary because a failed SELECT leaves the NFC link in a broken state.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[out]</td><td class="paramname">session</td><td>Reference to the secure session to be populated with keys and IV. </td></tr>
@@ -350,6 +361,135 @@ Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a03e08d9bb6e9e5af10a886e715c05237" name="a03e08d9bb6e9e5af10a886e715c05237"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a03e08d9bb6e9e5af10a886e715c05237">&#9670;&#160;</a></span>parseDerSignature()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool CryptnoxWallet::parseDerSignature </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>der</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>derLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>r</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t &amp;&#160;</td>
+          <td class="paramname"><em>rLength</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>s</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t &amp;&#160;</td>
+          <td class="paramname"><em>sLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Parse a DER-encoded ECDSA signature to extract raw r and s values. </p>
+<p>Parse a DER-encoded ECDSA signature to extract raw r and s integer values.</p>
+<p>DER format: 0x30 [total-length] 0x02 [r-length] [r] 0x02 [s-length] [s]</p>
+<p>Useful for blockchain transaction formatting (Ethereum, XRP, etc.) where raw (r, s) values are needed instead of DER encoding.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">der</td><td>Pointer to DER-encoded signature bytes. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">derLength</td><td>Length of the DER signature. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">r</td><td>Buffer to receive the r value (must be at least 33 bytes). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">rLength</td><td>Actual length of r written. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">s</td><td>Buffer to receive the s value (must be at least 33 bytes). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">sLength</td><td>Actual length of s written. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if parsing succeeded, false otherwise.</dd></dl>
+<p>DER format: 0x30 [total-length] 0x02 [r-length] [r-bytes] 0x02 [s-length] [s-bytes]</p>
+<p>Note: r and s may have a leading 0x00 byte if the high bit is set (ASN.1 sign encoding). Callers should handle stripping this leading zero when converting to fixed-size values.</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">der</td><td>DER-encoded signature. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">derLength</td><td>Length of DER data. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">r</td><td>Buffer for r value (at least 33 bytes). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">rLength</td><td>Actual r length. </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">s</td><td>Buffer for s value (at least 33 bytes). </td></tr>
+    <tr><td class="paramdir">[out]</td><td class="paramname">sLength</td><td>Actual s length. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true on success, false on malformed DER. </dd></dl>
+
+</div>
+</div>
+<a id="a539f73749cce012f4a973840c76d1275" name="a539f73749cce012f4a973840c76d1275"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a539f73749cce012f4a973840c76d1275">&#9670;&#160;</a></span>sign()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structCW__SignResult.html">CW_SignResult</a> CryptnoxWallet::sign </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structCW__SignRequest.html">CW_SignRequest</a> &amp;&#160;</td>
+          <td class="paramname"><em>request</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Generates a signature using the specified key and signature type. </p>
+<p>Sends the hash to the card over the secure channel for signing. The card performs the signing internally and returns a signature.</p>
+<p>APDU: CLA=0x80, INS=0xC0, P1=keyType, P2=signatureType Data: hash [+ optional PIN] Response: DER signature → parsed to raw (r[32] + s[32])</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">request</td><td><a class="el" href="structCW__SignRequest.html" title="Request parameters for the sign operation.">CW_SignRequest</a> containing session, keyType, signatureType, pin, hash. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="structCW__SignResult.html" title="Result of the sign operation.">CW_SignResult</a> containing signature[64] and errorCode.</dd></dl>
+<p>Constructs and sends the SIGN APDU (INS=0xC0) with the hash data. The card performs signing internally and returns a DER-encoded signature, which is then parsed to extract the raw (r, s) values.</p>
+<p>Protocol reference: APDU: [0x80, 0xC0, keyType, signatureType] Data: hash (32 bytes) [+ PIN if not pinLessMode] Response: DER signature → parsed to raw signature[64]</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in]</td><td class="paramname">request</td><td><a class="el" href="structCW__SignRequest.html" title="Request parameters for the sign operation.">CW_SignRequest</a> containing session, keyType, signatureType, pin, hash. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><a class="el" href="structCW__SignResult.html" title="Result of the sign operation.">CW_SignResult</a> containing signature[64] and errorCode. </dd></dl>
 
 </div>
 </div>
