@@ -11,7 +11,7 @@ package "Library" {
         + disconnect(session)
         + getCardInfo(session)
         + verifyPin(session)
-        + sign(session, hash, hashLen, sig, sigLen, ...)
+        + sign(request) : CW_SignResult
         + {static} parseDerSignature(der, derLen, r, rLen, s, sLen)
         --
         - logger : CW_Logger&
@@ -39,6 +39,25 @@ package "Secure stack" {
         --
         + CW_SecureSession()
         + clear() : void
+    }
+
+    class CW_SignRequest {
+        + session : CW_SecureSession&
+        + keyType : uint8_t
+        + signatureType : uint8_t
+        + pin[...]
+        + pinLessMode : bool
+        + hash : const uint8_t*
+        + hashLength : uint8_t
+        --
+        + CW_SignRequest(sess, kType, sigType, pinless)
+    }
+
+    class CW_SignResult {
+        + signature[64]
+        + errorCode : uint8_t
+        --
+        + CW_SignResult()
     }
 }
 
@@ -141,9 +160,12 @@ package "External Libraries" <<Frame>> #FFFDE7 {
 
 CryptnoxWallet --> CW_SecureChannel
 CryptnoxWallet --> CW_Logger
+CryptnoxWallet ..> CW_SignRequest
+CryptnoxWallet ..> CW_SignResult
 CW_SecureChannel *.. CW_SecureSession
 CW_SecureChannel --> CW_CryptoProvider
 CW_SecureChannel --> CW_NfcTransport
+CW_SignRequest --> CW_SecureSession
 
 CW_CryptoProvider <|.. ArduinoCryptoProvider
 CW_NfcTransport <|.. PN532Adapter
