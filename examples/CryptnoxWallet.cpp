@@ -715,7 +715,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
     }
 
     /* Validate hash parameters */
-    if (request.hash == nullptr || request.hashLength == 0U) {
+    if (request.hash == NULL || request.hashLength == 0U) {
         serial.println(F("Error: Invalid parameters for sign."));
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
         return result;
@@ -878,7 +878,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
 bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
                                         uint8_t* r, uint8_t& rLength,
                                         uint8_t* s, uint8_t& sLength) {
-    if (der == nullptr || derLength < 6U || r == nullptr || s == nullptr) {
+    if (der == NULL || derLength < 6U || r == NULL || s == NULL) {
         return false;
     }
 
@@ -890,7 +890,8 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
     uint8_t pos = 2U;  /* Skip SEQUENCE tag and length */
 
     /* Read r: INTEGER tag (0x02) + length + value */
-    if (pos >= derLength || der[pos] != 0x02) {
+    /* Note: pos < derLength is guaranteed since derLength >= 6 and pos = 2 */
+    if (der[pos] != 0x02) {
         return false;
     }
     pos++;
@@ -1095,7 +1096,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     serial.println();
 
     /* Copy decrypted data to output buffer if provided */
-    if (decryptedOutput != nullptr && decryptedOutputLength != nullptr) {
+    if (decryptedOutput != NULL && decryptedOutputLength != NULL) {
         memcpy(decryptedOutput, decryptedData, decryptedDataLength);
         *decryptedOutputLength = decryptedDataLength;
     }

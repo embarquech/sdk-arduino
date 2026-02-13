@@ -104,12 +104,12 @@ struct CW_SignRequest {
      * @param sigType   Signature type.
      * @param pinless   PIN-less mode flag (default: CW_SIGN_WITH_PIN).
      */
-    CW_SignRequest(CW_SecureSession& sess,
-                   uint8_t kType = CW_SIGN_CURR_K1,
-                   uint8_t sigType = CW_SIGN_SIG_ECDSA_LOW_S,
-                   bool pinless = CW_SIGN_WITH_PIN)
+    explicit CW_SignRequest(CW_SecureSession& sess,
+                            uint8_t kType = CW_SIGN_CURR_K1,
+                            uint8_t sigType = CW_SIGN_SIG_ECDSA_LOW_S,
+                            bool pinless = CW_SIGN_WITH_PIN)
         : session(sess), keyType(kType), signatureType(sigType),
-          pinLessMode(pinless), hash(nullptr), hashLength(0U) {
+          pinLessMode(pinless), hash(NULL), hashLength(0U) {
         memset(pin, 0U, sizeof(pin));
     }
 };
@@ -318,7 +318,7 @@ private:
      * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
      *                                    Can be nullptr if not needed.
      */
-     bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = nullptr);
+     bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = NULL);
  
      /**
      * @brief Print an APDU in hex format with optional label.
@@ -353,7 +353,7 @@ private:
     */
     bool aes_cbc_encrypt(CW_SecureSession& session, const uint8_t apdu[], uint16_t apduLength,
                          const uint8_t data[], uint16_t dataLength,
-                         uint8_t* decryptedOutput = nullptr, uint16_t* decryptedOutputLength = nullptr);
+                         uint8_t* decryptedOutput = NULL, uint16_t* decryptedOutputLength = NULL);
 
     /**
     * @brief Verifies the MAC and decrypts an AES-CBC encrypted APDU response.
@@ -371,7 +371,7 @@ private:
     */
     bool aes_cbc_decrypt(CW_SecureSession& session, uint8_t *response, size_t response_len,
                          uint8_t* mac_value,
-                         uint8_t* decryptedOutput = nullptr, uint16_t* decryptedOutputLength = nullptr);
+                         uint8_t* decryptedOutput = NULL, uint16_t* decryptedOutputLength = NULL);
 
     /**
      * @brief Check if the secure channel is open.
