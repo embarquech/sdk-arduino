@@ -704,27 +704,68 @@ void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
  * @return CW_SignResult containing signature[64] and errorCode.
  */
 // cppcheck-suppress unusedFunction
-CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
+CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
+{
     CW_SignResult result;
 
+    if (!validateSignRequest(request, result)) {
+        return result;
+    }
+
+    uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
+    uint16_t dataLength = 0U;
+
+    if (!buildSignPayload(request, data, dataLength, result)) {
+        return result;
+    }
+
+    uint8_t derResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
+    uint16_t derLength = 0U;
+
+    if (!sendSignApdu(request, data, dataLength, derResponse, derLength, result)) {
+        return result;
+    }
+
+    if (!extractRawSignature(derResponse, derLength, result)) {
+        return result;
+    }
+
+    debugPrintSignature(result.signature);
+
+    result.errorCode = CW_OK;
+    return result;
+}
+
+/**
+ * @brief Validates the sign request parameters.
+ *
+ * Checks that the secure channel is open, hash is valid, PIN-less mode
+ * constraints are met, and PIN length is acceptable.
+ *
+ * @param[in]  request  The sign request to validate.
+ * @param[out] result   Populated with error code on failure.
+ * @return true if the request is valid, false otherwise.
+ */
+bool CryptnoxWallet::validateSignRequest(CW_SignRequest& request, CW_SignResult& result)
+{
     /* Verify secure channel is open before proceeding */
     if (!isSecureChannelOpen(request.session)) {
         serial.println(F("Error: Secure channel not open. Cannot sign."));
         result.errorCode = CW_INVALID_SESSION;
-        return result;
+        return false;
     }
 
     /* Validate hash parameters */
     if (request.hash == NULL || request.hashLength == 0U) {
         serial.println(F("Error: Invalid parameters for sign."));
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
-        return result;
+        return false;
     }
 
     if (request.hashLength > CW_HASH_SIZE) {
         serial.println(F("Error: Hash too large."));
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
-        return result;
+        return false;
     }
 
     /* Validate PIN-less mode constraints: PIN-less only allowed with k1 key types */
@@ -732,13 +773,13 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
         if (request.keyType != CW_SIGN_PINLESS_K1) {
             serial.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
             result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
-            return result;
+            return false;
         }
     }
 
-    /* Compute PIN length once (find first zero byte) */
-    uint8_t pinLength = 0U;
+    /* Validate PIN length if not in PIN-less mode */
     if (!request.pinLessMode) {
+        uint8_t pinLength = 0U;
         for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
             if (request.pin[i] == 0U) {
                 break;
@@ -749,54 +790,105 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
         if (pinLength > 0U && pinLength < CW_MIN_PIN_LENGTH) {
             serial.println(F("Error: PIN too short (must be 6-9 digits)."));
             result.errorCode = CW_SIGN_PIN_INCORRECT;
-            return result;
+            return false;
         }
     }
 
+    return true;
+}
+
+/**
+ * @brief Builds the data payload for the SIGN APDU (hash + optional PIN).
+ *
+ * @param[in]  request     The sign request containing hash and PIN data.
+ * @param[out] data        Buffer to receive the payload (must be CW_HASH_SIZE + CW_MAX_PIN_LENGTH bytes).
+ * @param[out] dataLength  Actual payload length written.
+ * @param[out] result      Populated with error code on failure.
+ * @return true on success, false otherwise.
+ */
+bool CryptnoxWallet::buildSignPayload(CW_SignRequest& request, uint8_t* data, uint16_t& dataLength, CW_SignResult& result)
+{
+    (void)result; /* reserved for future error reporting */
+
+    dataLength = request.hashLength;
+    memcpy(data, request.hash, request.hashLength);
+
+    /* Append PIN if not in PIN-less mode */
+    if (!request.pinLessMode) {
+        uint8_t pinLength = 0U;
+        for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
+            if (request.pin[i] == 0U) {
+                break;
+            }
+            pinLength++;
+        }
+        if (pinLength > 0U) {
+            memcpy(data + dataLength, request.pin, pinLength);
+            dataLength += pinLength;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief Sends the encrypted SIGN APDU and retrieves the DER-encoded response.
+ *
+ * @param[in]  request      The sign request (session, keyType, signatureType).
+ * @param[in]  data         Payload data (hash + optional PIN).
+ * @param[in]  dataLength   Length of the payload.
+ * @param[out] derResponse  Buffer to receive the decrypted DER response.
+ * @param[out] derLength    Actual DER response length.
+ * @param[out] result       Populated with error code on failure.
+ * @return true on success, false otherwise.
+ */
+bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data, uint16_t dataLength,
+                                   uint8_t* derResponse, uint16_t& derLength, CW_SignResult& result)
+{
     /* Build SIGN APDU header: CLA=0x80, INS=0xC0, P1=keyType, P2=signatureType */
     uint8_t apdu[] = {0x80, 0xC0, request.keyType, request.signatureType};
 
-    /* Build data payload: hash + optional PIN */
-    uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
-    uint16_t dataLength = request.hashLength;
-
-    memcpy(data, request.hash, request.hashLength);
-
-    /* Append PIN if not in PIN-less mode and PIN is provided */
-    if (!request.pinLessMode && pinLength > 0U) {
-        memcpy(data + dataLength, request.pin, pinLength);
-        dataLength += pinLength;
-    }
-
     serial.println(F("Sending SIGN APDU..."));
 
-    /* Send encrypted APDU and receive decrypted response */
-    uint8_t decryptedResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
-    uint16_t decryptedLength = 0U;
-
     if (!aes_cbc_encrypt(request.session, apdu, sizeof(apdu), data, dataLength,
-                          decryptedResponse, &decryptedLength)) {
+                          derResponse, &derLength)) {
         serial.println(F("Sign APDU failed."));
         result.errorCode = CW_SIGN_NO_KEY_LOADED;
-        return result;
+        return false;
     }
 
+    return true;
+}
+
+/**
+ * @brief Extracts the raw (r, s) signature from a DER-encoded ECDSA response.
+ *
+ * Validates DER structure, parses r and s integers, strips ASN.1 leading
+ * zero padding, and writes the fixed 64-byte raw signature into result.
+ *
+ * @param[in]  derResponse  DER-encoded signature bytes.
+ * @param[in]  derLength    Length of the DER data.
+ * @param[out] result       Populated with signature[64] on success, error code on failure.
+ * @return true on success, false otherwise.
+ */
+bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result)
+{
     /* Validate DER signature format (first byte must be 0x30 = SEQUENCE tag) */
-    if (decryptedLength < 2U || decryptedResponse[0] != 0x30) {
+    if (derLength < 2U || derResponse[0] != 0x30) {
         serial.println(F("Error: Invalid signature data (missing DER SEQUENCE tag)."));
         result.errorCode = CW_NOK;
-        return result;
+        return false;
     }
 
     /* Extract actual DER signature length from the DER header */
     /* DER: 0x30 [total_content_length] 0x02 [r_len] [r] 0x02 [s_len] [s] */
-    uint8_t derContentLength = decryptedResponse[1];
+    uint8_t derContentLength = derResponse[1];
     uint8_t derTotalLength = 2U + derContentLength;  /* tag + length byte + content */
 
-    if (derTotalLength > decryptedLength) {
+    if (derTotalLength > derLength) {
         serial.println(F("Error: DER signature length exceeds response."));
         result.errorCode = CW_NOK;
-        return result;
+        return false;
     }
 
     /* Parse DER to extract raw r and s values */
@@ -805,10 +897,10 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
     uint8_t rLen = 0U;
     uint8_t sLen = 0U;
 
-    if (!parseDerSignature(decryptedResponse, derTotalLength, r, rLen, s, sLen)) {
+    if (!parseDerSignature(derResponse, derTotalLength, r, rLen, s, sLen)) {
         serial.println(F("Error: Failed to parse DER signature."));
         result.errorCode = CW_NOK;
-        return result;
+        return false;
     }
 
     /* Convert to fixed 32-byte r and s (strip leading zero if present, pad if short) */
@@ -842,21 +934,27 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
         }
     }
 
-    /* Print signature for debugging */
+    return true;
+}
+
+/**
+ * @brief Prints the raw signature bytes to serial for debugging.
+ *
+ * @param[in] signature  Pointer to CW_RAW_SIGNATURE_SIZE bytes.
+ */
+void CryptnoxWallet::debugPrintSignature(const uint8_t* signature)
+{
     serial.print(F("Signature ("));
     serial.print((uint8_t)CW_RAW_SIGNATURE_SIZE);
     serial.println(F(" bytes):"));
     for (uint8_t i = 0U; i < CW_RAW_SIGNATURE_SIZE; i++) {
         serial.print(F("0x"));
-        if (result.signature[i] < 0x10U) serial.print(F("0"));
-        serial.print(result.signature[i], HEX);
+        if (signature[i] < 0x10U) serial.print(F("0"));
+        serial.print(signature[i], HEX);
         serial.print(F(" "));
         if ((i + 1U) % 16U == 0U && (i + 1U) != CW_RAW_SIGNATURE_SIZE) serial.println();
     }
     serial.println();
-
-    result.errorCode = CW_OK;
-    return result;
 }
 
 /**

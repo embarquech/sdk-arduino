@@ -385,6 +385,14 @@ private:
      */
     bool isSecureChannelOpen(const CW_SecureSession& session) const;
 
+    /* Sign helper methods */
+    bool validateSignRequest(CW_SignRequest& request, CW_SignResult& result);
+    bool buildSignPayload(CW_SignRequest& request, uint8_t* data, uint16_t& dataLength, CW_SignResult& result);
+    bool sendSignApdu(CW_SignRequest& request, const uint8_t* data, uint16_t dataLength,
+                      uint8_t* derResponse, uint16_t& derLength, CW_SignResult& result);
+    bool extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result);
+    void debugPrintSignature(const uint8_t* signature);
+
     /**
      * @brief RNG callback for micro-ecc library.
      * @param dest Pointer to buffer to fill with random bytes.
