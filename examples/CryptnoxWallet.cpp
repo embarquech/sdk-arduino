@@ -715,9 +715,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
     uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
     uint16_t dataLength = 0U;
 
-    if (!buildSignPayload(request, data, dataLength, result)) {
-        return result;
-    }
+    buildSignPayload(request, data, dataLength);
 
     uint8_t derResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
     uint16_t derLength = 0U;
@@ -746,7 +744,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
  * @param[out] result   Populated with error code on failure.
  * @return true if the request is valid, false otherwise.
  */
-bool CryptnoxWallet::validateSignRequest(CW_SignRequest& request, CW_SignResult& result)
+bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignResult& result)
 {
     /* Verify secure channel is open before proceeding */
     if (!isSecureChannelOpen(request.session)) {
@@ -803,13 +801,9 @@ bool CryptnoxWallet::validateSignRequest(CW_SignRequest& request, CW_SignResult&
  * @param[in]  request     The sign request containing hash and PIN data.
  * @param[out] data        Buffer to receive the payload (must be CW_HASH_SIZE + CW_MAX_PIN_LENGTH bytes).
  * @param[out] dataLength  Actual payload length written.
- * @param[out] result      Populated with error code on failure.
- * @return true on success, false otherwise.
  */
-bool CryptnoxWallet::buildSignPayload(CW_SignRequest& request, uint8_t* data, uint16_t& dataLength, CW_SignResult& result)
+void CryptnoxWallet::buildSignPayload(const CW_SignRequest& request, uint8_t* data, uint16_t& dataLength)
 {
-    (void)result; /* reserved for future error reporting */
-
     dataLength = request.hashLength;
     memcpy(data, request.hash, request.hashLength);
 
@@ -827,8 +821,6 @@ bool CryptnoxWallet::buildSignPayload(CW_SignRequest& request, uint8_t* data, ui
             dataLength += pinLength;
         }
     }
-
-    return true;
 }
 
 /**
