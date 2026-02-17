@@ -50,6 +50,13 @@
 #define CW_MIN_PIN_LENGTH              (6U)    /**< Minimum PIN code length (digits) */
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
+/* Connect retry configuration */
+#define CW_CONNECT_MAX_ATTEMPTS        (5U)    /**< Maximum NFC connection retry attempts */
+
+/* DER encoding tags (ASN.1) */
+#define CW_DER_TAG_SEQUENCE           (0x30U)  /**< DER SEQUENCE tag */
+#define CW_DER_TAG_INTEGER            (0x02U)  /**< DER INTEGER tag */
+
 /******************************************************************
  * 3. Typedefs / enum / structs
  ******************************************************************/
@@ -223,10 +230,16 @@ public:
     void getCardInfo(CW_SecureSession& session);
 
     /**
-    * @brief Verifies the PIN code.
-    * @param[in,out] session Reference to the secure session containing keys and IV.
+    * @brief Verifies the PIN code on the smartcard.
+    *
+    * Sends the VERIFY PIN APDU (INS=0x20) with the provided PIN over the
+    * secure channel. The PIN must be 4–9 ASCII digit characters.
+    *
+    * @param[in,out] session   Reference to the secure session containing keys and IV.
+    * @param[in]     pin       Pointer to the PIN bytes (ASCII digits, e.g. "000000000").
+    * @param[in]     pinLength Length of the PIN in bytes (CW_MIN_PIN_LENGTH..CW_MAX_PIN_LENGTH).
     */
-    void verifyPin(CW_SecureSession& session);
+    void verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength);
 
     /**
     * @brief Generates a signature using the specified key and signature type.

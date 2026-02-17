@@ -64,7 +64,8 @@ void loop() {
     
         /* Step 2: Verify PIN (checks secure channel internally) */
         serialAdapter.println(F("Verifying PIN..."));
-        wallet.verifyPin(session);
+        const uint8_t pin[] = { '0', '0', '0', '0', '0', '0', '0', '0', '0' };  /* PIN code "000000000" */
+        wallet.verifyPin(session, pin, sizeof(pin));
     
         /* Step 3: Get card information (checks secure channel internally) */
         serialAdapter.println(F("Getting card information..."));

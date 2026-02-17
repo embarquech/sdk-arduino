@@ -45,11 +45,12 @@ bool CryptnoxWallet::printPN532FirmwareVersion() {
  */
 // cppcheck-suppress unusedFunction
  bool CryptnoxWallet::connect(CW_SecureSession& session) {
+    bool ret = false;
+
     /* Retry the full card activation sequence: inListPassiveTarget + delay + SELECT.
        When SELECT fails with PN532 status 0x1, the NFC link is broken and resending
        SELECT alone won't help — we must re-detect the card to reset the link. */
-    const uint8_t maxAttempts = 5U;
-    for (uint8_t attempt = 0U; attempt < maxAttempts; attempt++) {
+    for (uint8_t attempt = 0U; (attempt < CW_CONNECT_MAX_ATTEMPTS) && (ret == false); attempt++) {
         if (attempt > 0U) {
             serial.print(F("Retrying card connection (attempt "));
             serial.print((uint8_t)(attempt + 1U));
@@ -60,21 +61,19 @@ bool CryptnoxWallet::printPN532FirmwareVersion() {
         }
 
         /* Detect if an ISO-DEP capable card is present */
-        if (!driver.inListPassiveTarget()) {
-            continue;  /* No card detected, retry */
-        }
+        if (driver.inListPassiveTarget()) {
+            /* Allow the card to settle after ISO-14443-4 activation (RATS/ATS).
+               Some ISO-DEP smartcards need time before accepting the first APDU. */
+            delay(200);
 
-        /* Allow the card to settle after ISO-14443-4 activation (RATS/ATS).
-           Some ISO-DEP smartcards need time before accepting the first APDU. */
-        delay(200);
-
-        /* Try to establish secure channel (includes SELECT) */
-        if (establishSecureChannel(session)) {
-            return true;
+            /* Try to establish secure channel (includes SELECT) */
+            if (establishSecureChannel(session)) {
+                ret = true;
+            }
         }
     }
 
-    return false;  /* All attempts failed */
+    return ret;
 }
 
 /**
@@ -649,22 +648,26 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
 /**
  * @brief Verifies the PIN code on the smartcard.
  *
- * This function constructs the APDU for the "Verify PIN" command and encrypts it
- * using `aes_cbc_encrypt`.
+ * Sends the VERIFY PIN APDU (INS=0x20) with the provided PIN over the
+ * secure channel. The PIN must be 4–9 ASCII digit characters.
  *
- * @param[in,out] session Reference to the secure session containing keys and IV.
+ * @param[in,out] session   Reference to the secure session containing keys and IV.
+ * @param[in]     pin       Pointer to the PIN bytes (ASCII digits, e.g. "000000000").
+ * @param[in]     pinLength Length of the PIN in bytes (CW_MIN_PIN_LENGTH..CW_MAX_PIN_LENGTH).
  */
 // cppcheck-suppress unusedFunction
-void CryptnoxWallet::verifyPin(CW_SecureSession& session) {
+void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength) {
     /* Verify secure channel is open before proceeding */
     if (!isSecureChannelOpen(session)) {
         serial.println(F("Error: Secure channel not open. Cannot verify PIN."));
-        return;
     }
-    
-    uint8_t data[] = { 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30 }; /* PIN code 000000000 */
-    uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
-    aes_cbc_encrypt(session, apdu, sizeof(apdu), data, sizeof(data));
+    else if ((pin == NULL) || (pinLength < CW_MIN_PIN_LENGTH) || (pinLength > CW_MAX_PIN_LENGTH)) {
+        serial.println(F("Error: Invalid PIN (must be 4-9 digits)."));
+    }
+    else {
+        uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
+        aes_cbc_encrypt(session, apdu, sizeof(apdu), pin, pinLength);
+    }
 }
 
 /**
@@ -865,8 +868,8 @@ bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data, 
  */
 bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result)
 {
-    /* Validate DER signature format (first byte must be 0x30 = SEQUENCE tag) */
-    if (derLength < 2U || derResponse[0] != 0x30) {
+    /* Validate DER signature format (first byte must be SEQUENCE tag) */
+    if ((derLength < 2U) || (derResponse[0] != CW_DER_TAG_SEQUENCE)) {
         serial.println(F("Error: Invalid signature data (missing DER SEQUENCE tag)."));
         result.errorCode = CW_NOK;
         return false;
@@ -968,44 +971,55 @@ void CryptnoxWallet::debugPrintSignature(const uint8_t* signature)
 bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
                                         uint8_t* r, uint8_t& rLength,
                                         uint8_t* s, uint8_t& sLength) {
-    if (der == NULL || derLength < 6U || r == NULL || s == NULL) {
-        return false;
+    bool ret = false;
+
+    if ((der == NULL) || (derLength < 6U) || (r == NULL) || (s == NULL)) {
+        /* Invalid parameters */
+    }
+    /* Verify SEQUENCE tag */
+    else if (der[0] != CW_DER_TAG_SEQUENCE) {
+        /* Missing DER SEQUENCE tag */
+    }
+    else {
+        uint8_t pos = 2U;  /* Skip SEQUENCE tag and length */
+
+        /* Read r: INTEGER tag + length + value */
+        /* Note: pos < derLength is guaranteed since derLength >= 6 and pos = 2 */
+        if (der[pos] != CW_DER_TAG_INTEGER) {
+            /* Missing DER INTEGER tag for r */
+        }
+        else {
+            pos++;
+            rLength = der[pos];
+            pos++;
+            if ((pos + rLength) > derLength) {
+                /* r value exceeds DER data bounds */
+            }
+            else {
+                memcpy(r, der + pos, rLength);
+                pos += rLength;
+
+                /* Read s: INTEGER tag + length + value */
+                if ((pos >= derLength) || (der[pos] != CW_DER_TAG_INTEGER)) {
+                    /* Missing DER INTEGER tag for s */
+                }
+                else {
+                    pos++;
+                    sLength = der[pos];
+                    pos++;
+                    if ((pos + sLength) > derLength) {
+                        /* s value exceeds DER data bounds */
+                    }
+                    else {
+                        memcpy(s, der + pos, sLength);
+                        ret = true;
+                    }
+                }
+            }
+        }
     }
 
-    /* Verify SEQUENCE tag (0x30) */
-    if (der[0] != 0x30) {
-        return false;
-    }
-
-    uint8_t pos = 2U;  /* Skip SEQUENCE tag and length */
-
-    /* Read r: INTEGER tag (0x02) + length + value */
-    /* Note: pos < derLength is guaranteed since derLength >= 6 and pos = 2 */
-    if (der[pos] != 0x02) {
-        return false;
-    }
-    pos++;
-    rLength = der[pos];
-    pos++;
-    if ((pos + rLength) > derLength) {
-        return false;
-    }
-    memcpy(r, der + pos, rLength);
-    pos += rLength;
-
-    /* Read s: INTEGER tag (0x02) + length + value */
-    if (pos >= derLength || der[pos] != 0x02) {
-        return false;
-    }
-    pos++;
-    sLength = der[pos];
-    pos++;
-    if ((pos + sLength) > derLength) {
-        return false;
-    }
-    memcpy(s, der + pos, sLength);
-
-    return true;
+    return ret;
 }
 
 /**
@@ -1016,10 +1030,13 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
  * The response IV is updated from the last APDU response.
  *
  * @param[in,out] session Reference to the secure session containing keys and IV.
- * @param[in] apdu Pointer to the APDU header bytes.
- * @param[in] apduLength Length of the APDU header.
- * @param[in] data Pointer to the plaintext data to encrypt.
- * @param[in] dataLength Length of the plaintext data.
+ * @param[in]     apdu                  Pointer to the APDU header bytes.
+ * @param[in]     apduLength            Length of the APDU header.
+ * @param[in]     data                  Pointer to the plaintext data to encrypt.
+ * @param[in]     dataLength            Length of the plaintext data.
+ * @param[out]    decryptedOutput       Optional buffer to receive decrypted response data (NULL to skip).
+ * @param[out]    decryptedOutputLength Optional pointer to receive the decrypted data length (NULL to skip).
+ * @return true if APDU was sent and response decoded successfully, false otherwise.
  *
  * @note
  * - AES CBC encryption is performed with `session.aesKey` and current `session.iv`.
