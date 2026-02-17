@@ -122,9 +122,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a14a8f392e44c6960205aa6514f99b34f" id="r_a14a8f392e44c6960205aa6514f99b34f"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f">getCardInfo</a> (<a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;session)</td></tr>
 <tr class="memdesc:a14a8f392e44c6960205aa6514f99b34f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sends a secured GET CARD INFO APDU.  <br /></td></tr>
 <tr class="separator:a14a8f392e44c6960205aa6514f99b34f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:af2a97d9d9db0adefe49f09488d8b3d31" id="r_af2a97d9d9db0adefe49f09488d8b3d31"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#af2a97d9d9db0adefe49f09488d8b3d31">verifyPin</a> (<a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;session)</td></tr>
-<tr class="memdesc:af2a97d9d9db0adefe49f09488d8b3d31"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verifies the PIN code.  <br /></td></tr>
-<tr class="separator:af2a97d9d9db0adefe49f09488d8b3d31"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a74713d860921c1eb192d86c9d12b4dc2" id="r_a74713d860921c1eb192d86c9d12b4dc2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a74713d860921c1eb192d86c9d12b4dc2">verifyPin</a> (<a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;session, const uint8_t *pin, uint8_t pinLength)</td></tr>
+<tr class="memdesc:a74713d860921c1eb192d86c9d12b4dc2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Verifies the PIN code on the smartcard.  <br /></td></tr>
+<tr class="separator:a74713d860921c1eb192d86c9d12b4dc2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a539f73749cce012f4a973840c76d1275" id="r_a539f73749cce012f4a973840c76d1275"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structCW__SignResult.html">CW_SignResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275">sign</a> (<a class="el" href="structCW__SignRequest.html">CW_SignRequest</a> &amp;request)</td></tr>
 <tr class="memdesc:a539f73749cce012f4a973840c76d1275"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a signature using the specified key and signature type.  <br /></td></tr>
 <tr class="separator:a539f73749cce012f4a973840c76d1275"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -493,8 +493,8 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
-<a id="af2a97d9d9db0adefe49f09488d8b3d31" name="af2a97d9d9db0adefe49f09488d8b3d31"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#af2a97d9d9db0adefe49f09488d8b3d31">&#9670;&#160;</a></span>verifyPin()</h2>
+<a id="a74713d860921c1eb192d86c9d12b4dc2" name="a74713d860921c1eb192d86c9d12b4dc2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a74713d860921c1eb192d86c9d12b4dc2">&#9670;&#160;</a></span>verifyPin()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -503,24 +503,35 @@ Static Public Member Functions</h2></td></tr>
           <td class="memname">void CryptnoxWallet::verifyPin </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;&#160;</td>
-          <td class="paramname"><em>session</em></td><td>)</td>
+          <td class="paramname"><em>session</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>pin</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>pinLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Verifies the PIN code. </p>
-<p>Verifies the PIN code on the smartcard.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramdir">[in,out]</td><td class="paramname">session</td><td>Reference to the secure session containing keys and IV.</td></tr>
-  </table>
-  </dd>
-</dl>
-<p>This function constructs the APDU for the "Verify PIN" command and encrypts it using <code>aes_cbc_encrypt</code>.</p>
+<p>Verifies the PIN code on the smartcard. </p>
+<p>Sends the VERIFY PIN APDU (INS=0x20) with the provided PIN over the secure channel. The PIN must be 4–9 ASCII digit characters.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in,out]</td><td class="paramname">session</td><td>Reference to the secure session containing keys and IV. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">pin</td><td>Pointer to the PIN bytes (ASCII digits, e.g. "000000000"). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">pinLength</td><td>Length of the PIN in bytes (CW_MIN_PIN_LENGTH..CW_MAX_PIN_LENGTH). </td></tr>
   </table>
   </dd>
 </dl>
