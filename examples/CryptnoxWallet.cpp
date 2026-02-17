@@ -711,29 +711,23 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
 {
     CW_SignResult result;
 
-    if (!validateSignRequest(request, result)) {
-        return result;
+    if (validateSignRequest(request, result)) {
+        uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
+        uint16_t dataLength = 0U;
+
+        buildSignPayload(request, data, dataLength);
+
+        uint8_t derResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
+        uint16_t derLength = 0U;
+
+        if (sendSignApdu(request, data, dataLength, derResponse, derLength, result)) {
+            if (extractRawSignature(derResponse, derLength, result)) {
+                debugPrintSignature(result.signature);
+                result.errorCode = CW_OK;
+            }
+        }
     }
 
-    uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
-    uint16_t dataLength = 0U;
-
-    buildSignPayload(request, data, dataLength);
-
-    uint8_t derResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
-    uint16_t derLength = 0U;
-
-    if (!sendSignApdu(request, data, dataLength, derResponse, derLength, result)) {
-        return result;
-    }
-
-    if (!extractRawSignature(derResponse, derLength, result)) {
-        return result;
-    }
-
-    debugPrintSignature(result.signature);
-
-    result.errorCode = CW_OK;
     return result;
 }
 
@@ -749,53 +743,49 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
  */
 bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignResult& result)
 {
+    bool ret = false;
+
     /* Verify secure channel is open before proceeding */
     if (!isSecureChannelOpen(request.session)) {
         serial.println(F("Error: Secure channel not open. Cannot sign."));
         result.errorCode = CW_INVALID_SESSION;
-        return false;
     }
-
     /* Validate hash parameters */
-    if (request.hash == NULL || request.hashLength == 0U) {
+    else if ((request.hash == NULL) || (request.hashLength == 0U)) {
         serial.println(F("Error: Invalid parameters for sign."));
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
-        return false;
     }
-
-    if (request.hashLength > CW_HASH_SIZE) {
+    else if (request.hashLength > CW_HASH_SIZE) {
         serial.println(F("Error: Hash too large."));
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
-        return false;
     }
-
     /* Validate PIN-less mode constraints: PIN-less only allowed with k1 key types */
-    if (request.pinLessMode) {
-        if (request.keyType != CW_SIGN_PINLESS_K1) {
-            serial.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
-            result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
-            return false;
-        }
+    else if ((request.pinLessMode) && (request.keyType != CW_SIGN_PINLESS_K1)) {
+        serial.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
+        result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
     }
+    else {
+        ret = true;
 
-    /* Validate PIN length if not in PIN-less mode */
-    if (!request.pinLessMode) {
-        uint8_t pinLength = 0U;
-        for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
-            if (request.pin[i] == 0U) {
-                break;
+        /* Validate PIN length if not in PIN-less mode */
+        if (!request.pinLessMode) {
+            uint8_t pinLength = 0U;
+            for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
+                if (request.pin[i] == 0U) {
+                    break;
+                }
+                pinLength++;
             }
-            pinLength++;
-        }
-        /* PIN must be 6-9 digits if provided */
-        if (pinLength > 0U && pinLength < CW_MIN_PIN_LENGTH) {
-            serial.println(F("Error: PIN too short (must be 6-9 digits)."));
-            result.errorCode = CW_SIGN_PIN_INCORRECT;
-            return false;
+            /* PIN must be 6-9 digits if provided */
+            if ((pinLength > 0U) && (pinLength < CW_MIN_PIN_LENGTH)) {
+                serial.println(F("Error: PIN too short (must be 6-9 digits)."));
+                result.errorCode = CW_SIGN_PIN_INCORRECT;
+                ret = false;
+            }
         }
     }
 
-    return true;
+    return ret;
 }
 
 /**
@@ -840,19 +830,23 @@ void CryptnoxWallet::buildSignPayload(const CW_SignRequest& request, uint8_t* da
 bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data, uint16_t dataLength,
                                    uint8_t* derResponse, uint16_t& derLength, CW_SignResult& result)
 {
+    bool ret = false;
+
     /* Build SIGN APDU header: CLA=0x80, INS=0xC0, P1=keyType, P2=signatureType */
     uint8_t apdu[] = {0x80, 0xC0, request.keyType, request.signatureType};
 
     serial.println(F("Sending SIGN APDU..."));
 
-    if (!aes_cbc_encrypt(request.session, apdu, sizeof(apdu), data, dataLength,
-                          derResponse, &derLength)) {
+    if (aes_cbc_encrypt(request.session, apdu, sizeof(apdu), data, dataLength,
+                         derResponse, &derLength)) {
+        ret = true;
+    }
+    else {
         serial.println(F("Sign APDU failed."));
         result.errorCode = CW_SIGN_NO_KEY_LOADED;
-        return false;
     }
 
-    return true;
+    return ret;
 }
 
 /**
@@ -868,68 +862,72 @@ bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data, 
  */
 bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result)
 {
+    bool ret = false;
+
     /* Validate DER signature format (first byte must be SEQUENCE tag) */
     if ((derLength < 2U) || (derResponse[0] != CW_DER_TAG_SEQUENCE)) {
         serial.println(F("Error: Invalid signature data (missing DER SEQUENCE tag)."));
         result.errorCode = CW_NOK;
-        return false;
     }
+    else {
+        /* Extract actual DER signature length from the DER header */
+        /* DER: 0x30 [total_content_length] 0x02 [r_len] [r] 0x02 [s_len] [s] */
+        uint8_t derContentLength = derResponse[1];
+        uint8_t derTotalLength = 2U + derContentLength;  /* tag + length byte + content */
 
-    /* Extract actual DER signature length from the DER header */
-    /* DER: 0x30 [total_content_length] 0x02 [r_len] [r] 0x02 [s_len] [s] */
-    uint8_t derContentLength = derResponse[1];
-    uint8_t derTotalLength = 2U + derContentLength;  /* tag + length byte + content */
-
-    if (derTotalLength > derLength) {
-        serial.println(F("Error: DER signature length exceeds response."));
-        result.errorCode = CW_NOK;
-        return false;
-    }
-
-    /* Parse DER to extract raw r and s values */
-    uint8_t r[33U] = {0U};
-    uint8_t s[33U] = {0U};
-    uint8_t rLen = 0U;
-    uint8_t sLen = 0U;
-
-    if (!parseDerSignature(derResponse, derTotalLength, r, rLen, s, sLen)) {
-        serial.println(F("Error: Failed to parse DER signature."));
-        result.errorCode = CW_NOK;
-        return false;
-    }
-
-    /* Convert to fixed 32-byte r and s (strip leading zero if present, pad if short) */
-    memset(result.signature, 0U, CW_RAW_SIGNATURE_SIZE);
-
-    /* Copy r into first 32 bytes (right-aligned) */
-    if (rLen > 0U) {
-        uint8_t rSrc = 0U;
-        uint8_t rDstLen = 32U;
-        /* Strip leading zero byte (ASN.1 sign padding) */
-        if (rLen == 33U && r[0] == 0x00U) {
-            rSrc = 1U;
-            rLen = 32U;
+        if (derTotalLength > derLength) {
+            serial.println(F("Error: DER signature length exceeds response."));
+            result.errorCode = CW_NOK;
         }
-        if (rLen <= rDstLen) {
-            memcpy(result.signature + (rDstLen - rLen), r + rSrc, rLen);
+        else {
+            /* Parse DER to extract raw r and s values */
+            uint8_t r[33U] = {0U};
+            uint8_t s[33U] = {0U};
+            uint8_t rLen = 0U;
+            uint8_t sLen = 0U;
+
+            if (!parseDerSignature(derResponse, derTotalLength, r, rLen, s, sLen)) {
+                serial.println(F("Error: Failed to parse DER signature."));
+                result.errorCode = CW_NOK;
+            }
+            else {
+                /* Convert to fixed 32-byte r and s (strip leading zero if present, pad if short) */
+                memset(result.signature, 0U, CW_RAW_SIGNATURE_SIZE);
+
+                /* Copy r into first 32 bytes (right-aligned) */
+                if (rLen > 0U) {
+                    uint8_t rSrc = 0U;
+                    uint8_t rDstLen = 32U;
+                    /* Strip leading zero byte (ASN.1 sign padding) */
+                    if ((rLen == 33U) && (r[0] == 0x00U)) {
+                        rSrc = 1U;
+                        rLen = 32U;
+                    }
+                    if (rLen <= rDstLen) {
+                        memcpy(result.signature + (rDstLen - rLen), r + rSrc, rLen);
+                    }
+                }
+
+                /* Copy s into last 32 bytes (right-aligned) */
+                if (sLen > 0U) {
+                    uint8_t sSrc = 0U;
+                    uint8_t sDstLen = 32U;
+                    /* Strip leading zero byte (ASN.1 sign padding) */
+                    if ((sLen == 33U) && (s[0] == 0x00U)) {
+                        sSrc = 1U;
+                        sLen = 32U;
+                    }
+                    if (sLen <= sDstLen) {
+                        memcpy(result.signature + 32U + (sDstLen - sLen), s + sSrc, sLen);
+                    }
+                }
+
+                ret = true;
+            }
         }
     }
 
-    /* Copy s into last 32 bytes (right-aligned) */
-    if (sLen > 0U) {
-        uint8_t sSrc = 0U;
-        uint8_t sDstLen = 32U;
-        /* Strip leading zero byte (ASN.1 sign padding) */
-        if (sLen == 33U && s[0] == 0x00U) {
-            sSrc = 1U;
-            sLen = 32U;
-        }
-        if (sLen <= sDstLen) {
-            memcpy(result.signature + 32U + (sDstLen - sLen), s + sSrc, sLen);
-        }
-    }
-
-    return true;
+    return ret;
 }
 
 /**
