@@ -19,7 +19,7 @@
 
 /** @brief Default PIN code (ASCII digits). Must match the PIN used during card.init(). */
 #define DEFAULT_PIN       "000000000"
-#define DEFAULT_PIN_LEN   (9U)
+#define DEFAULT_PIN_LEN   (sizeof(DEFAULT_PIN) - 1U)
 
 ArduinoSerialAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_SS, &SPI);

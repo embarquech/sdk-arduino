@@ -665,8 +665,12 @@ void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, ui
         serial.println(F("Error: Invalid PIN (must be 4-9 digits)."));
     }
     else {
+        /* Python SDK valid_pin() always pads PIN to CW_MAX_PIN_LENGTH (9) bytes with null bytes.
+         * The card expects a fixed-length PIN field in the APDU payload. */
+        uint8_t paddedPin[CW_MAX_PIN_LENGTH] = {0U};
+        memcpy(paddedPin, pin, pinLength);
         uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
-        aes_cbc_encrypt(session, apdu, sizeof(apdu), pin, pinLength);
+        aes_cbc_encrypt(session, apdu, sizeof(apdu), paddedPin, CW_MAX_PIN_LENGTH);
     }
 }
 
@@ -810,8 +814,11 @@ void CryptnoxWallet::buildSignPayload(const CW_SignRequest& request, uint8_t* da
             pinLength++;
         }
         if (pinLength > 0U) {
-            memcpy(data + dataLength, request.pin, pinLength);
-            dataLength += pinLength;
+            /* PIN must be padded to CW_MAX_PIN_LENGTH (9) bytes with null bytes,
+             * matching Python SDK valid_pin() which always returns a 9-byte padded string.
+             * request.pin is zero-initialized, so bytes beyond pinLength are already 0x00. */
+            memcpy(data + dataLength, request.pin, CW_MAX_PIN_LENGTH);
+            dataLength += CW_MAX_PIN_LENGTH;
         }
     }
 }
@@ -1200,11 +1207,37 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     }
     serial.println();
 
-    /* Copy decrypted data to output buffer if provided */
-    if (decryptedOutput != NULL && decryptedOutputLength != NULL) {
-        memcpy(decryptedOutput, decryptedData, decryptedDataLength);
-        *decryptedOutputLength = decryptedDataLength;
+    bool ret = false;
+
+    /* The decoded data contains: [payload] [SW1] [SW2]
+     * Last 2 bytes are the card's inner status word (like Python SDK _decode).
+     * Check inner SW before treating the payload as valid data. */
+    if (decryptedDataLength < 2U) {
+        serial.println(F("Error: Decoded data too short (missing inner SW)."));
+    }
+    else {
+        uint8_t innerSW1 = decryptedData[decryptedDataLength - 2U];
+        uint8_t innerSW2 = decryptedData[decryptedDataLength - 1U];
+        uint16_t payloadLength = decryptedDataLength - 2U;
+
+        if ((innerSW1 != 0x90U) || (innerSW2 != 0x00U)) {
+            serial.print(F("Card error SW: 0x"));
+            if (innerSW1 < 0x10U) { serial.print(F("0")); }
+            serial.print(innerSW1, HEX);
+            serial.print(F(" 0x"));
+            if (innerSW2 < 0x10U) { serial.print(F("0")); }
+            serial.println(innerSW2, HEX);
+        }
+        else {
+            ret = true;
+        }
+
+        /* Copy payload (without inner SW) to output buffer if provided */
+        if ((decryptedOutput != NULL) && (decryptedOutputLength != NULL)) {
+            memcpy(decryptedOutput, decryptedData, payloadLength);
+            *decryptedOutputLength = payloadLength;
+        }
     }
 
-    return true;
+    return ret;
 }

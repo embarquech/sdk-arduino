@@ -47,7 +47,7 @@
 
 #define CW_RAW_SIGNATURE_SIZE         (64U)    /**< Raw signature size (r[32] + s[32]) */
 #define CW_HASH_SIZE                  (32U)    /**< Standard hash size (SHA-256, Keccak-256) */
-#define CW_MIN_PIN_LENGTH              (6U)    /**< Minimum PIN code length (digits) */
+#define CW_MIN_PIN_LENGTH              (4U)    /**< Minimum PIN code length (digits) */
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
 /* Connect retry configuration */
