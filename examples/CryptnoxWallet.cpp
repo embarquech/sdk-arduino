@@ -23,6 +23,8 @@
 #define AES_TEST_DATA_SIZE                       32U
 #define INPUT_BUFFER_LIMIT                         (128U + 1U)
 #define MAX_MAC_DATA_LEN                           (AES_BLOCK_SIZE + 2U * INPUT_BUFFER_LIMIT)
+/* Max APDU sent over secure channel: header(4) + LC(1) + MAC(16) + max_encrypted(2*INPUT_BUFFER_LIMIT) */
+#define SEND_APDU_MAX_LEN                          (4U + 1U + AES_BLOCK_SIZE + 2U * INPUT_BUFFER_LIMIT)
 
 AESLib aesLib;
 
@@ -1059,7 +1061,11 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
 
     uint8_t macApdu[] = { encryptedLength + 16U, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     uint16_t macDataLength = apduLength + sizeof(macApdu) + encryptedLength;
-    uint8_t macData[macDataLength];
+    if (macDataLength > MAX_MAC_DATA_LEN) {
+        serial.println(F("Error: MAC data length exceeds buffer."));
+        return false;
+    }
+    uint8_t macData[MAX_MAC_DATA_LEN] = { 0U };
     uint16_t offset = 0U;
     memcpy(macData, apdu, apduLength);
     offset += apduLength;
@@ -1080,8 +1086,11 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
 
     uint8_t lengthValue[] = { encryptedLength + 16U };
     uint16_t sendApduLength = apduLength + sizeof(lengthValue) + sizeof(macValue) + encryptedLength;
-
-    uint8_t sendApdu[sendApduLength];
+    if (sendApduLength > SEND_APDU_MAX_LEN) {
+        serial.println(F("Error: Send APDU length exceeds buffer."));
+        return false;
+    }
+    uint8_t sendApdu[SEND_APDU_MAX_LEN] = { 0U };
     offset = 0U;
     memcpy(sendApdu, apdu, apduLength);
     offset += apduLength;
@@ -1092,7 +1101,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     memcpy(sendApdu + offset, encryptedData, encryptedLength);
 
     serial.println("Apdu: ");
-    for (uint8_t i = 0; i < sizeof(sendApdu); i++) {
+    for (uint16_t i = 0U; i < sendApduLength; i++) {
         serial.print(sendApdu[i], HEX);
         serial.print(" ");
     }
@@ -1101,7 +1110,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     /* Send APDU */
     uint8_t response[255U] = { 0U };
     uint8_t responseLength = sizeof(response);
-    if (driver.sendAPDU(sendApdu, sizeof(sendApdu), response, responseLength)) {
+    if (driver.sendAPDU(sendApdu, sendApduLength, response, responseLength)) {
         if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
             serial.println(F("Secured APDU success."));
 
