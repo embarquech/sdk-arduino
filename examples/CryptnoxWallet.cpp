@@ -158,14 +158,13 @@ void CryptnoxWallet::disconnect(CW_SecureSession& session) {
  * @return true if the secure channel is open (session keys are initialized), false otherwise.
  */
 bool CryptnoxWallet::isSecureChannelOpen(const CW_SecureSession& session) const {
-    /* Check if AES key is non-zero (initialized) */
-    /* If all bytes are zero, the secure channel is not open */
+    /* Constant-time check: OR all bytes together so every byte is always visited,
+     * preventing timing side-channels that would reveal which byte is non-zero. */
+    uint8_t acc = 0U;
     for (uint8_t i = 0U; i < CW_AESKEY_SIZE; i++) {
-        if (session.aesKey[i] != 0U) {
-            return true;  /* At least one non-zero byte found, channel is open */
-        }
+        acc |= session.aesKey[i];
     }
-    return false;  /* All bytes are zero, channel is not open */
+    return (acc != 0U);
 }
 
 /* SELECT APDU to activate Cryptnox application */
@@ -1200,22 +1199,25 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     /* Decode the full payload using the AES key and IV = last MAC sent to the card */
     uint16_t decryptedDataLength = aesLib.decrypt(rep_data, cipherLen, decryptedData, session.aesKey, sizeof(session.aesKey), mac_value);
 
-    serial.println(F("Decoded data: "));
-    for (uint16_t i = 0U; i < decryptedDataLength; i++) {
-        serial.print(decryptedData[i], HEX);
-        serial.print(F(" "));
-    }
-    serial.println();
-
     bool ret = false;
 
     /* The decoded data contains: [payload] [SW1] [SW2]
      * Last 2 bytes are the card's inner status word (like Python SDK _decode).
-     * Check inner SW before treating the payload as valid data. */
+     * Check both lower and upper bounds before accessing decryptedData. */
     if (decryptedDataLength < 2U) {
         serial.println(F("Error: Decoded data too short (missing inner SW)."));
     }
+    else if (decryptedDataLength > sizeof(decryptedData)) {
+        serial.println(F("Error: Decoded data length exceeds buffer."));
+    }
     else {
+        serial.println(F("Decoded data: "));
+        for (uint16_t i = 0U; i < decryptedDataLength; i++) {
+            serial.print(decryptedData[i], HEX);
+            serial.print(F(" "));
+        }
+        serial.println();
+
         uint8_t innerSW1 = decryptedData[decryptedDataLength - 2U];
         uint8_t innerSW2 = decryptedData[decryptedDataLength - 1U];
         uint16_t payloadLength = decryptedDataLength - 2U;
