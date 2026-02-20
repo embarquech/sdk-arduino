@@ -21,12 +21,25 @@
 #define CARDEPHEMERALPUBKEY_SIZE                 64U
 #define AES_BLOCK_SIZE                           16U
 #define AES_TEST_DATA_SIZE                       32U
-#define INPUT_BUFFER_LIMIT                         (128U + 1U)
-#define MAX_MAC_DATA_LEN                           (AES_BLOCK_SIZE + 2U * INPUT_BUFFER_LIMIT)
-/* Max APDU sent over secure channel: header(4) + LC(1) + MAC(16) + max_encrypted(2*INPUT_BUFFER_LIMIT) */
-#define SEND_APDU_MAX_LEN                          (4U + 1U + AES_BLOCK_SIZE + 2U * INPUT_BUFFER_LIMIT)
+#define INPUT_BUFFER_LIMIT                         (1200U)
+#define ENC_BUF_MAX_LEN                            (INPUT_BUFFER_LIMIT + AES_BLOCK_SIZE)          /* 1216 bytes */
+#define MAX_MAC_DATA_LEN                           (16U + ENC_BUF_MAX_LEN)                        /* 1232 bytes */
+#define SEND_APDU_MAX_LEN                          (4U + 1U + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)  /* 1237 bytes */
 
 AESLib aesLib;
+
+/* Shared static crypto scratch buffers for aes_cbc_encrypt / aes_cbc_decrypt.
+ * Reuse is safe: decrypt is always called from inside encrypt AFTER encrypt's
+ * large intermediate buffers are no longer needed.  Saves ~4.9 KB vs. 7 separate statics
+ * (7 x ~1230 B = ~8610 B  →  3 shared = 3685 B).
+ *
+ *   s_apduBuf : encrypt → macEncryptedData → sendApdu ;  decrypt → macEncryptedData
+ *   s_macBuf  : encrypt → macData                     ;  decrypt → macInput
+ *   s_dataBuf : encrypt → encryptedData               ;  decrypt → decryptedData
+ */
+static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 1237 bytes */
+static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 1232 bytes */
+static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 1216 bytes */
 
 /* Print PN532 firmware version via driver */
 /* MISRA C:2012 Rule 8.9 deviation:
@@ -416,7 +429,7 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         }
 
         /* Cipher the random number with aesKey */
-        uint8_t ciphertextOPC[2U * INPUT_BUFFER_LIMIT] = { 0U };
+        uint8_t ciphertextOPC[48U] = { 0U }; /* encrypt(RNG_data[32]) with Bit padding: ceil((32+1)/16)*16 = 48 bytes */
         /* Set padding ISO/IEC 9797-1 Method 2 algorithm */
         aesLib.set_paddingmode(paddingMode::Bit);
         uint16_t cipherLength = aesLib.encrypt(reinterpret_cast<byte*>(RNG_data), sizeof(RNG_data), ciphertextOPC, session.aesKey, sizeof(session.aesKey), iv_opc);
@@ -428,8 +441,8 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         memcpy(MAC_apduHeader, opcApduHeader, sizeof(opcApduHeader));
 
         size_t  MAC_data_length = sizeof(MAC_apduHeader) + cipherLength;
-        uint8_t MAC_data[MAX_MAC_DATA_LEN] = { 0U }; /* sizeof(MAC_apduHeader) + cipherLength = 16 + 48 */
-        uint8_t ciphertextMACLong[2 * INPUT_BUFFER_LIMIT] = { 0U };
+        uint8_t MAC_data[64U] = { 0U };          /* MAC_apduHeader(16) + ciphertextOPC(48) = 64 bytes */
+        uint8_t ciphertextMACLong[64U] = { 0U }; /* encrypt(MAC_data[64]) with Null padding = 64 bytes */
         if (MAC_data_length > sizeof(MAC_data)) {
             return false;
         } 
@@ -676,6 +689,68 @@ void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, ui
 }
 
 /**
+ * @brief Writes data to a user memory slot, paginating in CW_USER_DATA_PAGE_SIZE pages.
+ *
+ * Splits data into chunks of at most CW_USER_DATA_PAGE_SIZE (1200) bytes.
+ * Each chunk is sent as a separate WRITE USER DATA APDU (INS=0xFC) over the
+ * secure channel with AES-CBC encryption.
+ *
+ * APDU: CLA=0x80, INS=0xFC, P1=slot, P2=page index (0-based)
+ * Data: up to CW_USER_DATA_PAGE_SIZE bytes of plaintext per page
+ *
+ * @param[in,out] session    Reference to the secure session containing keys and IV.
+ * @param[in]     slot       User data slot index (0-based).
+ * @param[in]     data       Pointer to the data to write.
+ * @param[in]     dataLength Total number of bytes to write.
+ * @return true if all pages were written successfully, false otherwise.
+ */
+// cppcheck-suppress unusedFunction
+bool CryptnoxWallet::writeUserData(CW_SecureSession& session, uint8_t slot,
+                                    const uint8_t* data, uint16_t dataLength) {
+    bool ret = false;
+
+    if (!isSecureChannelOpen(session)) {
+        serial.println(F("Error: Secure channel not open. Cannot write user data."));
+    }
+    else if ((data == NULL) || (dataLength == 0U)) {
+        serial.println(F("Error: Invalid data for write user data."));
+    }
+    else {
+        uint16_t offset = 0U;
+        uint8_t  page   = 0U;
+        ret = true;
+
+        while ((offset < dataLength) && ret) {
+            uint16_t chunkSize = dataLength - offset;
+            if (chunkSize > CW_USER_DATA_PAGE_SIZE) {
+                chunkSize = CW_USER_DATA_PAGE_SIZE;
+            }
+
+            /* WRITE USER DATA: CLA=0x80, INS=0xFC, P1=slot, P2=page index */
+            uint8_t apdu[] = {0x80U, 0xFCU, slot, page};
+
+            serial.print(F("Writing user data page "));
+            serial.print(page);
+            serial.print(F(" ("));
+            serial.print(chunkSize);
+            serial.println(F(" bytes)..."));
+
+            if (!aes_cbc_encrypt(session, apdu, sizeof(apdu), data + offset, chunkSize)) {
+                serial.print(F("Error: Write user data failed on page "));
+                serial.println(page);
+                ret = false;
+            }
+            else {
+                offset += chunkSize;
+                page++;
+            }
+        }
+    }
+
+    return ret;
+}
+
+/**
  * @brief Sends a secured GET CARD INFO APDU to retrieve card information.
  *
  * This function sends a GET DATA APDU (INS=0xFA) to retrieve card status
@@ -722,7 +797,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
 
         buildSignPayload(request, data, dataLength);
 
-        uint8_t derResponse[2U * INPUT_BUFFER_LIMIT] = {0U};
+        uint8_t derResponse[256U] = {0U}; /* APDU response ≤ 255 bytes; decrypted payload ≤ 255 bytes */
         uint16_t derLength = 0U;
 
         if (sendSignApdu(request, data, dataLength, derResponse, derLength, result)) {
@@ -1053,11 +1128,14 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
                                       const uint8_t data[], uint16_t dataLength,
                                       uint8_t* decryptedOutput, uint16_t* decryptedOutputLength) {
     bool ret = false;
-    uint8_t encryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
+    /* Use shared file-scope static buffers (s_apduBuf, s_macBuf, s_dataBuf).
+     * s_dataBuf = encryptedData (reused as decryptedData in decrypt phase)
+     * s_macBuf  = macData       (reused as macInput in decrypt phase)
+     * s_apduBuf = macEncryptedData first, then reused as sendApdu; reused again in decrypt */
 
     /* Set padding ISO/IEC 9797-1 Method 2 algorithm */
     aesLib.set_paddingmode(paddingMode::Bit);
-    uint16_t encryptedLength = aesLib.encrypt(reinterpret_cast<const byte*>(data), dataLength, encryptedData, session.aesKey, sizeof(session.aesKey), session.iv);
+    uint16_t encryptedLength = aesLib.encrypt(reinterpret_cast<const byte*>(data), dataLength, s_dataBuf, session.aesKey, sizeof(session.aesKey), session.iv);
 
     uint8_t macApdu[] = { encryptedLength + 16U, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
     uint16_t macDataLength = apduLength + sizeof(macApdu) + encryptedLength;
@@ -1065,24 +1143,23 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
         serial.println(F("Error: MAC data length exceeds buffer."));
         return false;
     }
-    uint8_t macData[MAX_MAC_DATA_LEN] = { 0U };
     uint16_t offset = 0U;
-    memcpy(macData, apdu, apduLength);
+    memcpy(s_macBuf, apdu, apduLength);
     offset += apduLength;
-    memcpy(macData + offset, macApdu, sizeof(macApdu));
+    memcpy(s_macBuf + offset, macApdu, sizeof(macApdu));
     offset += sizeof(macApdu);
-    memcpy(macData + offset, encryptedData, encryptedLength);
+    memcpy(s_macBuf + offset, s_dataBuf, encryptedLength);
 
-    uint8_t macEncryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
     uint8_t macIv[AES_BLOCK_SIZE] = { 0U };
     /* Set no padding */
     aesLib.set_paddingmode(paddingMode::Null);
-    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(macData), macDataLength, macEncryptedData, session.macKey, sizeof(session.macKey), macIv);
+    /* s_apduBuf used first as macEncryptedData output */
+    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(s_macBuf), macDataLength, s_apduBuf, session.macKey, sizeof(session.macKey), macIv);
 
     uint8_t macValue[AES_BLOCK_SIZE] = { 0U };
     /* In AES CBC-MAC last block is MAC */
     uint8_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
-    memcpy(macValue, macEncryptedData + macOffset, AES_BLOCK_SIZE);
+    memcpy(macValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     uint8_t lengthValue[] = { encryptedLength + 16U };
     uint16_t sendApduLength = apduLength + sizeof(lengthValue) + sizeof(macValue) + encryptedLength;
@@ -1090,19 +1167,19 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
         serial.println(F("Error: Send APDU length exceeds buffer."));
         return false;
     }
-    uint8_t sendApdu[SEND_APDU_MAX_LEN] = { 0U };
+    /* s_apduBuf reused as sendApdu (macEncryptedData phase is done) */
     offset = 0U;
-    memcpy(sendApdu, apdu, apduLength);
+    memcpy(s_apduBuf, apdu, apduLength);
     offset += apduLength;
-    memcpy(sendApdu + offset, lengthValue, sizeof(lengthValue));
+    memcpy(s_apduBuf + offset, lengthValue, sizeof(lengthValue));
     offset += sizeof(lengthValue);
-    memcpy(sendApdu + offset, macValue, sizeof(macValue));
+    memcpy(s_apduBuf + offset, macValue, sizeof(macValue));
     offset += sizeof(macValue);
-    memcpy(sendApdu + offset, encryptedData, encryptedLength);
+    memcpy(s_apduBuf + offset, s_dataBuf, encryptedLength);
 
     serial.println("Apdu: ");
     for (uint16_t i = 0U; i < sendApduLength; i++) {
-        serial.print(sendApdu[i], HEX);
+        serial.print(s_apduBuf[i], HEX);
         serial.print(" ");
     }
     serial.println();
@@ -1110,7 +1187,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     /* Send APDU */
     uint8_t response[255U] = { 0U };
     uint8_t responseLength = sizeof(response);
-    if (driver.sendAPDU(sendApdu, sendApduLength, response, responseLength)) {
+    if (driver.sendAPDU(s_apduBuf, sendApduLength, response, responseLength)) {
         if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
             serial.println(F("Secured APDU success."));
 
@@ -1169,29 +1246,32 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     /* Build MAC input: [totalDataLen & 0xFF, 0*15] || all ciphertext bytes */
     /* This matches Python SDK _decode(): data_mac_list + rep_data */
     size_t macInputLen = AES_BLOCK_SIZE + cipherLen;
-    uint8_t macInput[MAX_MAC_DATA_LEN] = { 0U };
-    if (macInputLen > sizeof(macInput)) {
+    /* Use shared file-scope static buffers (s_apduBuf, s_macBuf, s_dataBuf).
+     * Encrypt's large buffers are all done by the time decrypt is called, so reuse is safe.
+     * s_macBuf  = macInput       (was macData in encrypt)
+     * s_apduBuf = macEncryptedData (was sendApdu in encrypt)
+     * s_dataBuf = decryptedData  (was encryptedData in encrypt) */
+    if (macInputLen > sizeof(s_macBuf)) {
         serial.println(F("Error: Response too large for MAC verification."));
         return false;
     }
 
     /* First 16 bytes: length encoding + zero padding */
-    macInput[0] = (uint8_t)(totalDataLen & 0xFFU);
-    /* bytes [1..15] already zero from initialization */
+    memset(s_macBuf, 0U, AES_BLOCK_SIZE);   /* zero header block including bytes [1..15] */
+    s_macBuf[0] = (uint8_t)(totalDataLen & 0xFFU);
 
     /* Append ALL ciphertext (not just first block) */
-    memcpy(macInput + AES_BLOCK_SIZE, rep_data, cipherLen);
+    memcpy(s_macBuf + AES_BLOCK_SIZE, rep_data, cipherLen);
 
     /* Compute MAC (AES-CBC-MAC with zero IV, no padding) */
-    uint8_t macEncryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
     uint8_t mac_iv[AES_BLOCK_SIZE] = { 0U };
     aesLib.set_paddingmode(paddingMode::Null);
-    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(macInput), macInputLen, macEncryptedData, session.macKey, sizeof(session.macKey), mac_iv);
+    uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(s_macBuf), macInputLen, s_apduBuf, session.macKey, sizeof(session.macKey), mac_iv);
 
     uint8_t recomputedMacValue[AES_BLOCK_SIZE] = { 0U };
     /* In AES CBC-MAC the last block is the MAC */
     uint8_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
-    memcpy(recomputedMacValue, macEncryptedData + macOffset, AES_BLOCK_SIZE);
+    memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
     if (memcmp(rep_mac, recomputedMacValue, AES_BLOCK_SIZE) == 0) {
@@ -1202,33 +1282,33 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     }
 
     /* --- Decrypt ALL ciphertext (not just one block) --- */
-    uint8_t decryptedData[2 * INPUT_BUFFER_LIMIT] = { 0U };
     /* Set padding ISO/IEC 9797-1 Method 2 algorithm */
     aesLib.set_paddingmode(paddingMode::Bit);
     /* Decode the full payload using the AES key and IV = last MAC sent to the card */
-    uint16_t decryptedDataLength = aesLib.decrypt(rep_data, cipherLen, decryptedData, session.aesKey, sizeof(session.aesKey), mac_value);
+    /* s_dataBuf reused as decryptedData (encryptedData phase is done) */
+    uint16_t decryptedDataLength = aesLib.decrypt(rep_data, cipherLen, s_dataBuf, session.aesKey, sizeof(session.aesKey), mac_value);
 
     bool ret = false;
 
     /* The decoded data contains: [payload] [SW1] [SW2]
      * Last 2 bytes are the card's inner status word (like Python SDK _decode).
-     * Check both lower and upper bounds before accessing decryptedData. */
+     * Check both lower and upper bounds before accessing s_dataBuf. */
     if (decryptedDataLength < 2U) {
         serial.println(F("Error: Decoded data too short (missing inner SW)."));
     }
-    else if (decryptedDataLength > sizeof(decryptedData)) {
+    else if (decryptedDataLength > sizeof(s_dataBuf)) {
         serial.println(F("Error: Decoded data length exceeds buffer."));
     }
     else {
         serial.println(F("Decoded data: "));
         for (uint16_t i = 0U; i < decryptedDataLength; i++) {
-            serial.print(decryptedData[i], HEX);
+            serial.print(s_dataBuf[i], HEX);
             serial.print(F(" "));
         }
         serial.println();
 
-        uint8_t innerSW1 = decryptedData[decryptedDataLength - 2U];
-        uint8_t innerSW2 = decryptedData[decryptedDataLength - 1U];
+        uint8_t innerSW1 = s_dataBuf[decryptedDataLength - 2U];
+        uint8_t innerSW2 = s_dataBuf[decryptedDataLength - 1U];
         uint16_t payloadLength = decryptedDataLength - 2U;
 
         if ((innerSW1 != 0x90U) || (innerSW2 != 0x00U)) {
@@ -1245,7 +1325,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
 
         /* Copy payload (without inner SW) to output buffer if provided */
         if ((decryptedOutput != NULL) && (decryptedOutputLength != NULL)) {
-            memcpy(decryptedOutput, decryptedData, payloadLength);
+            memcpy(decryptedOutput, s_dataBuf, payloadLength);
             *decryptedOutputLength = payloadLength;
         }
     }

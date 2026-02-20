@@ -50,6 +50,9 @@
 #define CW_MIN_PIN_LENGTH              (4U)    /**< Minimum PIN code length (digits) */
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
+/* User data write configuration */
+#define CW_USER_DATA_PAGE_SIZE         (1200U) /**< Max plaintext bytes per write user data page */
+
 /* Connect retry configuration */
 #define CW_CONNECT_MAX_ATTEMPTS        (5U)    /**< Maximum NFC connection retry attempts */
 
@@ -255,6 +258,24 @@ public:
     * @return CW_SignResult containing signature[64] and errorCode.
     */
     CW_SignResult sign(CW_SignRequest& request);
+
+    /**
+    * @brief Writes data to a user memory slot, paginating in CW_USER_DATA_PAGE_SIZE pages.
+    *
+    * Splits the data into pages of at most CW_USER_DATA_PAGE_SIZE (1200) bytes.
+    * Each page is sent as a separate secured APDU using AES-CBC encryption.
+    *
+    * APDU: CLA=0x80, INS=0xFC, P1=slot, P2=page index (0-based)
+    * Data: up to CW_USER_DATA_PAGE_SIZE bytes of plaintext per page
+    *
+    * @param[in,out] session    Reference to the secure session containing keys and IV.
+    * @param[in]     slot       User data slot index (0-based).
+    * @param[in]     data       Pointer to the data to write.
+    * @param[in]     dataLength Total number of bytes to write.
+    * @return true if all pages were written successfully, false otherwise.
+    */
+    bool writeUserData(CW_SecureSession& session, uint8_t slot,
+                       const uint8_t* data, uint16_t dataLength);
 
     /**
     * @brief Parse a DER-encoded ECDSA signature to extract raw r and s values.
