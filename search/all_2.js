@@ -37,6 +37,7 @@ var searchData=
   ['cw_5fsign_5fsig_5fecdsa_5flow_5fs_34',['CW_SIGN_SIG_ECDSA_LOW_S',['../CryptnoxWallet_8h.html#a96fed9be166364a32f8d85dfd64b3ec4',1,'CryptnoxWallet.h']]],
   ['cw_5fsign_5fsig_5fschnorr_5fbip340_35',['CW_SIGN_SIG_SCHNORR_BIP340',['../CryptnoxWallet_8h.html#ab01f3f53dad2bbb3ad1d0be3539ea1fb',1,'CryptnoxWallet.h']]],
   ['cw_5fsign_5fwith_5fpin_36',['CW_SIGN_WITH_PIN',['../CryptnoxWallet_8h.html#a8169464dc341135c728565e19852ee42',1,'CryptnoxWallet.h']]],
-  ['cw_5fsignrequest_37',['cw_signrequest',['../structCW__SignRequest.html',1,'CW_SignRequest'],['../structCW__SignRequest.html#a0baa7734a68ac9eb8c307b683bed15de',1,'CW_SignRequest::CW_SignRequest()']]],
-  ['cw_5fsignresult_38',['cw_signresult',['../structCW__SignResult.html',1,'CW_SignResult'],['../structCW__SignResult.html#a28561e0290c5e493651ce16879b5594b',1,'CW_SignResult::CW_SignResult()']]]
+  ['cw_5fsignrequest_37',['cw_signrequest',['../structCW__SignRequest.html#a0baa7734a68ac9eb8c307b683bed15de',1,'CW_SignRequest::CW_SignRequest()'],['../structCW__SignRequest.html',1,'CW_SignRequest']]],
+  ['cw_5fsignresult_38',['cw_signresult',['../structCW__SignResult.html',1,'CW_SignResult'],['../structCW__SignResult.html#a28561e0290c5e493651ce16879b5594b',1,'CW_SignResult::CW_SignResult()']]],
+  ['cw_5fuser_5fdata_5fpage_5fsize_39',['CW_USER_DATA_PAGE_SIZE',['../CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5',1,'CryptnoxWallet.h']]]
 ];

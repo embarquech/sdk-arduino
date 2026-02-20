@@ -7,5 +7,6 @@ var classCryptnoxWallet =
     [ "establishSecureChannel", "classCryptnoxWallet.html#a8584e36b3c8c088ad1ee18358246262e", null ],
     [ "getCardInfo", "classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f", null ],
     [ "sign", "classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275", null ],
-    [ "verifyPin", "classCryptnoxWallet.html#a74713d860921c1eb192d86c9d12b4dc2", null ]
+    [ "verifyPin", "classCryptnoxWallet.html#a74713d860921c1eb192d86c9d12b4dc2", null ],
+    [ "writeUserData", "classCryptnoxWallet.html#a4ec22fccb95ebf3ad536fa0fb50577d1", null ]
 ];

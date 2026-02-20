@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['input_5fbuffer_5flimit_0',['INPUT_BUFFER_LIMIT',['../CryptnoxWallet_8cpp.html#a933c4568c34613285feefecab74ab596',1,'CryptnoxWallet.cpp']]]
+  ['getcardcertificate_5fin_5fbytes_0',['GETCARDCERTIFICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#add6226a3b0f8dde62724922f00f0333a',1,'CryptnoxWallet.cpp']]]
 ];

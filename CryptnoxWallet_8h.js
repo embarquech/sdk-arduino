@@ -30,5 +30,6 @@ var CryptnoxWallet_8h =
     [ "CW_SIGN_SIG_ECDSA_EOSIO", "CryptnoxWallet_8h.html#a317d114f3711b4f691b5603e9bf2f135", null ],
     [ "CW_SIGN_SIG_ECDSA_LOW_S", "CryptnoxWallet_8h.html#a96fed9be166364a32f8d85dfd64b3ec4", null ],
     [ "CW_SIGN_SIG_SCHNORR_BIP340", "CryptnoxWallet_8h.html#ab01f3f53dad2bbb3ad1d0be3539ea1fb", null ],
-    [ "CW_SIGN_WITH_PIN", "CryptnoxWallet_8h.html#a8169464dc341135c728565e19852ee42", null ]
+    [ "CW_SIGN_WITH_PIN", "CryptnoxWallet_8h.html#a8169464dc341135c728565e19852ee42", null ],
+    [ "CW_USER_DATA_PAGE_SIZE", "CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5", null ]
 ];

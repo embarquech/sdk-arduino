@@ -30,5 +30,6 @@ var searchData=
   ['cw_5fsign_5fsig_5fecdsa_5feosio_27',['CW_SIGN_SIG_ECDSA_EOSIO',['../CryptnoxWallet_8h.html#a317d114f3711b4f691b5603e9bf2f135',1,'CryptnoxWallet.h']]],
   ['cw_5fsign_5fsig_5fecdsa_5flow_5fs_28',['CW_SIGN_SIG_ECDSA_LOW_S',['../CryptnoxWallet_8h.html#a96fed9be166364a32f8d85dfd64b3ec4',1,'CryptnoxWallet.h']]],
   ['cw_5fsign_5fsig_5fschnorr_5fbip340_29',['CW_SIGN_SIG_SCHNORR_BIP340',['../CryptnoxWallet_8h.html#ab01f3f53dad2bbb3ad1d0be3539ea1fb',1,'CryptnoxWallet.h']]],
-  ['cw_5fsign_5fwith_5fpin_30',['CW_SIGN_WITH_PIN',['../CryptnoxWallet_8h.html#a8169464dc341135c728565e19852ee42',1,'CryptnoxWallet.h']]]
+  ['cw_5fsign_5fwith_5fpin_30',['CW_SIGN_WITH_PIN',['../CryptnoxWallet_8h.html#a8169464dc341135c728565e19852ee42',1,'CryptnoxWallet.h']]],
+  ['cw_5fuser_5fdata_5fpage_5fsize_31',['CW_USER_DATA_PAGE_SIZE',['../CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5',1,'CryptnoxWallet.h']]]
 ];

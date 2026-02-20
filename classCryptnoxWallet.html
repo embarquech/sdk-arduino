@@ -128,6 +128,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a539f73749cce012f4a973840c76d1275" id="r_a539f73749cce012f4a973840c76d1275"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structCW__SignResult.html">CW_SignResult</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275">sign</a> (<a class="el" href="structCW__SignRequest.html">CW_SignRequest</a> &amp;request)</td></tr>
 <tr class="memdesc:a539f73749cce012f4a973840c76d1275"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generates a signature using the specified key and signature type.  <br /></td></tr>
 <tr class="separator:a539f73749cce012f4a973840c76d1275"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4ec22fccb95ebf3ad536fa0fb50577d1" id="r_a4ec22fccb95ebf3ad536fa0fb50577d1"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxWallet.html#a4ec22fccb95ebf3ad536fa0fb50577d1">writeUserData</a> (<a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;session, uint8_t slot, const uint8_t *data, uint16_t dataLength)</td></tr>
+<tr class="memdesc:a4ec22fccb95ebf3ad536fa0fb50577d1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes data to a user memory slot, paginating in CW_USER_DATA_PAGE_SIZE pages.  <br /></td></tr>
+<tr class="separator:a4ec22fccb95ebf3ad536fa0fb50577d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-methods" name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -535,6 +538,72 @@ Static Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a4ec22fccb95ebf3ad536fa0fb50577d1" name="a4ec22fccb95ebf3ad536fa0fb50577d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4ec22fccb95ebf3ad536fa0fb50577d1">&#9670;&#160;</a></span>writeUserData()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool CryptnoxWallet::writeUserData </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structCW__SecureSession.html">CW_SecureSession</a> &amp;&#160;</td>
+          <td class="paramname"><em>session</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>slot</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>data</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint16_t&#160;</td>
+          <td class="paramname"><em>dataLength</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Writes data to a user memory slot, paginating in CW_USER_DATA_PAGE_SIZE pages. </p>
+<p>Splits the data into pages of at most CW_USER_DATA_PAGE_SIZE (1200) bytes. Each page is sent as a separate secured APDU using AES-CBC encryption.</p>
+<p>APDU: CLA=0x80, INS=0xFC, P1=slot, P2=page index (0-based) Data: up to CW_USER_DATA_PAGE_SIZE bytes of plaintext per page</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">session</td><td>Reference to the secure session containing keys and IV. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">slot</td><td>User data slot index (0-based). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">data</td><td>Pointer to the data to write. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">dataLength</td><td>Total number of bytes to write. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if all pages were written successfully, false otherwise.</dd></dl>
+<p>Splits data into chunks of at most CW_USER_DATA_PAGE_SIZE (1200) bytes. Each chunk is sent as a separate WRITE USER DATA APDU (INS=0xFC) over the secure channel with AES-CBC encryption.</p>
+<p>APDU: CLA=0x80, INS=0xFC, P1=slot, P2=page index (0-based) Data: up to CW_USER_DATA_PAGE_SIZE bytes of plaintext per page</p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramdir">[in,out]</td><td class="paramname">session</td><td>Reference to the secure session containing keys and IV. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">slot</td><td>User data slot index (0-based). </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">data</td><td>Pointer to the data to write. </td></tr>
+    <tr><td class="paramdir">[in]</td><td class="paramname">dataLength</td><td>Total number of bytes to write. </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>true if all pages were written successfully, false otherwise. </dd></dl>
 
 </div>
 </div>
