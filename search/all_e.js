@@ -1,11 +1,13 @@
 var searchData=
 [
-  ['random_5fbytes_0',['RANDOM_BYTES',['../CryptnoxWallet_8cpp.html#af1f0cb989a33a574c24035af703f414a',1,'CryptnoxWallet.cpp']]],
-  ['request_5fmutuallyauthenticate_5fin_5fbytes_1',['REQUEST_MUTUALLYAUTHENTICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#a598754e58bdf174bc9f67d37e3723afe',1,'CryptnoxWallet.cpp']]],
-  ['resetreader_2',['resetreader',['../classNFCDriver.html#aee0747ff468a79637af603245fa2b21f',1,'NFCDriver::resetReader()'],['../classPN532Adapter.html#a0aa02e9f1cb109f9faa7826e11b50b7c',1,'PN532Adapter::resetReader()']]],
-  ['response_5fgetcardcertificate_5fin_5fbytes_3',['RESPONSE_GETCARDCERTIFICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#a3c25c23f5fe90be1ba5057da3671e497',1,'CryptnoxWallet.cpp']]],
-  ['response_5fmutuallyauthenticate_5fin_5fbytes_4',['RESPONSE_MUTUALLYAUTHENTICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#aa1b05565a70ac025eb457db8de5a5729',1,'CryptnoxWallet.cpp']]],
-  ['response_5fopensecurechannel_5fin_5fbytes_5',['RESPONSE_OPENSECURECHANNEL_IN_BYTES',['../CryptnoxWallet_8cpp.html#a7c5aeb3574b13dac470b43046615b00a',1,'CryptnoxWallet.cpp']]],
-  ['response_5fselect_5fin_5fbytes_6',['RESPONSE_SELECT_IN_BYTES',['../CryptnoxWallet_8cpp.html#a460ee1a0f1a0e3420b7f4f621b35157b',1,'CryptnoxWallet.cpp']]],
-  ['response_5fstatus_5fwords_5fin_5fbytes_7',['RESPONSE_STATUS_WORDS_IN_BYTES',['../CryptnoxWallet_8cpp.html#a06c6580716e31d8e2dc06ce292908f0c',1,'CryptnoxWallet.cpp']]]
+  ['send_5fapdu_5fmax_5flen_0',['SEND_APDU_MAX_LEN',['../CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8',1,'CryptnoxWallet.cpp']]],
+  ['sendapdu_1',['sendapdu',['../classNFCDriver.html#a314f98a89a9c8b5f3f7c3cd186b071bb',1,'NFCDriver::sendAPDU()'],['../classPN532Adapter.html#a2a51721c2f9c8504328a5fad57792c67',1,'PN532Adapter::sendAPDU()']]],
+  ['serialdriver_2',['SerialDriver',['../classSerialDriver.html',1,'']]],
+  ['serialdriver_2eh_3',['SerialDriver.h',['../SerialDriver_8h.html',1,'']]],
+  ['session_4',['session',['../structCW__SignRequest.html#a2eeb94ed74e9a34babd32fd38c3cc251',1,'CW_SignRequest']]],
+  ['sign_5',['sign',['../classCryptnoxWallet.html#a539f73749cce012f4a973840c76d1275',1,'CryptnoxWallet']]],
+  ['signature_6',['signature',['../structCW__SignResult.html#aefde572eb2e1e8778f602f46858c090f',1,'CW_SignResult']]],
+  ['signaturetype_7',['signatureType',['../structCW__SignRequest.html#a0324c690439b553d0458408430a8b905',1,'CW_SignRequest']]],
+  ['spi_5fhardware_8',['SPI_HARDWARE',['../PN532Adapter_8h.html#a7e0449d50e07074f7465a9657f5601fda04cbdd26ae9b2111fbfb224de5409bc9',1,'PN532Adapter.h']]],
+  ['spi_5fsoftware_9',['SPI_SOFTWARE',['../PN532Adapter_8h.html#a7e0449d50e07074f7465a9657f5601fda6dd246fd7fd23375d4ca3933fc41fc76',1,'PN532Adapter.h']]]
 ];

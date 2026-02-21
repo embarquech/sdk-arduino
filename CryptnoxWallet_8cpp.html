@@ -136,21 +136,17 @@ Macros</h2></td></tr>
 <tr class="separator:a25455ff28b2a52bf37f6edf188eac678"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af19ab913a847ad1e91c5291215116de1" id="r_af19ab913a847ad1e91c5291215116de1"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a>&#160;&#160;&#160;16U</td></tr>
 <tr class="separator:af19ab913a847ad1e91c5291215116de1"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6b8f131d028b42f73709b0acd9e474f4" id="r_a6b8f131d028b42f73709b0acd9e474f4"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a6b8f131d028b42f73709b0acd9e474f4">AES_TEST_DATA_SIZE</a>&#160;&#160;&#160;32U</td></tr>
-<tr class="separator:a6b8f131d028b42f73709b0acd9e474f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a70b35c86e614c88ec439c71088d326bb" id="r_a70b35c86e614c88ec439c71088d326bb"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a>&#160;&#160;&#160;(4U)    /* CLA + INS + P1 + P2 */</td></tr>
 <tr class="separator:a70b35c86e614c88ec439c71088d326bb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0b74aad04ccbaf30f26246881b88ab41" id="r_a0b74aad04ccbaf30f26246881b88ab41"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a0b74aad04ccbaf30f26246881b88ab41">MAC_APDU_LEN</a>&#160;&#160;&#160;(12U)   /* Length-encoding block used in MAC computation */</td></tr>
 <tr class="separator:a0b74aad04ccbaf30f26246881b88ab41"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a614d9233af8413910cd973b6be986bf6" id="r_a614d9233af8413910cd973b6be986bf6"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a614d9233af8413910cd973b6be986bf6">LC_EXT_LEN</a>&#160;&#160;&#160;(3U)    /* Extended APDU Lc field: 0x00 + 2-byte length */</td></tr>
-<tr class="separator:a614d9233af8413910cd973b6be986bf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a933c4568c34613285feefecab74ab596" id="r_a933c4568c34613285feefecab74ab596"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a933c4568c34613285feefecab74ab596">INPUT_BUFFER_LIMIT</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5">CW_USER_DATA_PAGE_SIZE</a>)</td></tr>
+<tr class="memitem:a933c4568c34613285feefecab74ab596" id="r_a933c4568c34613285feefecab74ab596"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a933c4568c34613285feefecab74ab596">INPUT_BUFFER_LIMIT</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5">CW_USER_DATA_PAGE_SIZE</a>)  /* Sized for writeUserData, the largest plaintext APDU payload */</td></tr>
 <tr class="separator:a933c4568c34613285feefecab74ab596"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aed7638aad5cb447691c51f0d6c48a14f" id="r_aed7638aad5cb447691c51f0d6c48a14f"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a933c4568c34613285feefecab74ab596">INPUT_BUFFER_LIMIT</a> + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a>)</td></tr>
 <tr class="separator:aed7638aad5cb447691c51f0d6c48a14f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8ed6716688e9a986a27784d937607b98" id="r_a8ed6716688e9a986a27784d937607b98"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a8ed6716688e9a986a27784d937607b98">MAX_MAC_DATA_LEN</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#a0b74aad04ccbaf30f26246881b88ab41">MAC_APDU_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td></tr>
 <tr class="separator:a8ed6716688e9a986a27784d937607b98"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:acb48e7c75b9b39117ac42c6dda5676b8" id="r_acb48e7c75b9b39117ac42c6dda5676b8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8">SEND_APDU_MAX_LEN</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#a614d9233af8413910cd973b6be986bf6">LC_EXT_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td></tr>
+<tr class="memitem:acb48e7c75b9b39117ac42c6dda5676b8" id="r_acb48e7c75b9b39117ac42c6dda5676b8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8">SEND_APDU_MAX_LEN</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + 1U + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td></tr>
 <tr class="separator:acb48e7c75b9b39117ac42c6dda5676b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
@@ -167,20 +163,6 @@ Variables</h2></td></tr>
       <table class="memname">
         <tr>
           <td class="memname">#define AES_BLOCK_SIZE&#160;&#160;&#160;16U</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a6b8f131d028b42f73709b0acd9e474f4" name="a6b8f131d028b42f73709b0acd9e474f4"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6b8f131d028b42f73709b0acd9e474f4">&#9670;&#160;</a></span>AES_TEST_DATA_SIZE</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define AES_TEST_DATA_SIZE&#160;&#160;&#160;32U</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -292,21 +274,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define INPUT_BUFFER_LIMIT&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5">CW_USER_DATA_PAGE_SIZE</a>)</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-</div>
-</div>
-<a id="a614d9233af8413910cd973b6be986bf6" name="a614d9233af8413910cd973b6be986bf6"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a614d9233af8413910cd973b6be986bf6">&#9670;&#160;</a></span>LC_EXT_LEN</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">#define LC_EXT_LEN&#160;&#160;&#160;(3U)    /* Extended APDU Lc field: 0x00 + 2-byte length */</td>
+          <td class="memname">#define INPUT_BUFFER_LIMIT&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8h.html#a6085fa47786e4251e9d24e22bed82ba5">CW_USER_DATA_PAGE_SIZE</a>)  /* Sized for writeUserData, the largest plaintext APDU payload */</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -460,7 +428,7 @@ Variables</h2></td></tr>
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">#define SEND_APDU_MAX_LEN&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#a614d9233af8413910cd973b6be986bf6">LC_EXT_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td>
+          <td class="memname">#define SEND_APDU_MAX_LEN&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + 1U + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td>
         </tr>
       </table>
 </div><div class="memdoc">

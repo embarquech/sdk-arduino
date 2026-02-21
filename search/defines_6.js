@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['mac_5fapdu_5flen_0',['MAC_APDU_LEN',['../CryptnoxWallet_8cpp.html#a0b74aad04ccbaf30f26246881b88ab41',1,'CryptnoxWallet.cpp']]],
-  ['max_5fmac_5fdata_5flen_1',['MAX_MAC_DATA_LEN',['../CryptnoxWallet_8cpp.html#a8ed6716688e9a986a27784d937607b98',1,'CryptnoxWallet.cpp']]]
+  ['opensecurechannel_5fsalt_5fin_5fbytes_0',['OPENSECURECHANNEL_SALT_IN_BYTES',['../CryptnoxWallet_8cpp.html#a5844cc731e45bc22143e8b5df0e5bbbe',1,'CryptnoxWallet.cpp']]]
 ];
