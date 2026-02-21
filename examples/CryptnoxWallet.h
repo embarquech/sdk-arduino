@@ -51,7 +51,7 @@
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
 /* User data write configuration */
-#define CW_USER_DATA_PAGE_SIZE         (1200U) /**< Max plaintext bytes per write user data page */
+#define CW_USER_DATA_PAGE_SIZE         (208U)  /**< Max plaintext bytes per write user data page (PN532 transport limit) */
 
 /* Connect retry configuration */
 #define CW_CONNECT_MAX_ATTEMPTS        (5U)    /**< Maximum NFC connection retry attempts */
