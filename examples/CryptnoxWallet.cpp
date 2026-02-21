@@ -20,29 +20,31 @@
 #define CLIENT_PUBLIC_KEY_SIZE                   64U
 #define CARDEPHEMERALPUBKEY_SIZE                 64U
 #define AES_BLOCK_SIZE                           16U
-#define AES_TEST_DATA_SIZE                       32U
 #define APDU_HEADER_LEN                            (4U)    /* CLA + INS + P1 + P2 */
 #define MAC_APDU_LEN                               (12U)   /* Length-encoding block used in MAC computation */
-#define LC_EXT_LEN                                 (3U)    /* Extended APDU Lc field: 0x00 + 2-byte length */
-#define INPUT_BUFFER_LIMIT                         (CW_USER_DATA_PAGE_SIZE)
+#define INPUT_BUFFER_LIMIT                         (CW_USER_DATA_PAGE_SIZE)  /* Sized for writeUserData, the largest plaintext APDU payload */
 #define ENC_BUF_MAX_LEN                            (INPUT_BUFFER_LIMIT + AES_BLOCK_SIZE)
 #define MAX_MAC_DATA_LEN                           (APDU_HEADER_LEN + MAC_APDU_LEN + ENC_BUF_MAX_LEN)
-#define SEND_APDU_MAX_LEN                          (APDU_HEADER_LEN + LC_EXT_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)
+#define SEND_APDU_MAX_LEN                          (APDU_HEADER_LEN + 1U + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)
+
+/* Enforce that CW_USER_DATA_PAGE_SIZE fits within a single PN532 APDU (255 bytes max):
+ * APDU_HEADER_LEN(4) + Lc(1) + MAC(AES_BLOCK_SIZE) + encrypted(ENC_BUF_MAX_LEN) <= 255 */
+static_assert(APDU_HEADER_LEN + 1U + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN <= 255U,
+              "CW_USER_DATA_PAGE_SIZE too large for PN532 single APDU transport");
 
 AESLib aesLib;
 
 /* Shared static crypto scratch buffers for aes_cbc_encrypt / aes_cbc_decrypt.
  * Reuse is safe: decrypt is always called from inside encrypt AFTER encrypt's
- * large intermediate buffers are no longer needed.  Saves ~4.9 KB vs. 7 separate statics
- * (7 x ~1230 B = ~8610 B  →  3 shared = 3685 B).
+ * large intermediate buffers are no longer needed.  Total: 709 bytes.
  *
  *   s_apduBuf : encrypt → macEncryptedData → sendApdu ;  decrypt → macEncryptedData
  *   s_macBuf  : encrypt → macData                     ;  decrypt → macInput
  *   s_dataBuf : encrypt → encryptedData               ;  decrypt → decryptedData
  */
-static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 1237 bytes */
-static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 1232 bytes */
-static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 1216 bytes */
+static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 245 bytes */
+static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 240 bytes */
+static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 224 bytes */
 
 /* Print PN532 firmware version via driver */
 /* MISRA C:2012 Rule 8.9 deviation:
@@ -1142,12 +1144,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
 
     uint16_t lcValue = encryptedLength + (uint16_t)AES_BLOCK_SIZE;
     uint8_t macApdu[MAC_APDU_LEN] = {0U};
-    if (lcValue > 255U) {
-        macApdu[0] = (uint8_t)(lcValue >> 8U);
-        macApdu[1] = (uint8_t)(lcValue & 0xFFU);
-    } else {
-        macApdu[0] = (uint8_t)lcValue;
-    }
+    macApdu[0U] = (uint8_t)lcValue;
     uint16_t macDataLength = apduLength + sizeof(macApdu) + encryptedLength;
     if (macDataLength > MAX_MAC_DATA_LEN) {
         serial.println(F("Error: MAC data length exceeds buffer."));
@@ -1171,18 +1168,8 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     uint16_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
     memcpy(macValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
-    uint8_t lcBuf[LC_EXT_LEN] = {0U};
-    uint8_t lcBufLen;
-    if (lcValue > 255U) {
-        lcBuf[0] = 0x00U;
-        lcBuf[1] = (uint8_t)(lcValue >> 8U);
-        lcBuf[2] = (uint8_t)(lcValue & 0xFFU);
-        lcBufLen = LC_EXT_LEN;
-    } else {
-        lcBuf[0] = (uint8_t)lcValue;
-        lcBufLen = 1U;
-    }
-    uint16_t sendApduLength = apduLength + lcBufLen + sizeof(macValue) + encryptedLength;
+    const uint8_t lc = (uint8_t)lcValue;
+    uint16_t sendApduLength = apduLength + 1U + sizeof(macValue) + encryptedLength;
     if (sendApduLength > SEND_APDU_MAX_LEN) {
         serial.println(F("Error: Send APDU length exceeds buffer."));
         return false;
@@ -1191,8 +1178,8 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     offset = 0U;
     memcpy(s_apduBuf, apdu, apduLength);
     offset += apduLength;
-    memcpy(s_apduBuf + offset, lcBuf, lcBufLen);
-    offset += lcBufLen;
+    s_apduBuf[offset] = lc;
+    offset += 1U;
     memcpy(s_apduBuf + offset, macValue, sizeof(macValue));
     offset += sizeof(macValue);
     memcpy(s_apduBuf + offset, s_dataBuf, encryptedLength);

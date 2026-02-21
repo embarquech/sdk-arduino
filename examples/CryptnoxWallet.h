@@ -51,6 +51,7 @@
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
 /* User data write configuration */
+/* 255 (PN532 APDU max) - 4 (header) - 1 (Lc) - 16 (MAC) - 16 (max AES padding) = 218, floored to AES block = 208 */
 #define CW_USER_DATA_PAGE_SIZE         (208U)  /**< Max plaintext bytes per write user data page (PN532 transport limit) */
 
 /* Connect retry configuration */
