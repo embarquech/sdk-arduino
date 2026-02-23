@@ -2,6 +2,7 @@ var CryptnoxWallet_8cpp =
 [
     [ "AES_BLOCK_SIZE", "CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1", null ],
     [ "APDU_HEADER_LEN", "CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb", null ],
+    [ "APDU_LC_LEN", "CryptnoxWallet_8cpp.html#a719b105508d88a18dc17bd5c240bdcf6", null ],
     [ "CARDEPHEMERALPUBKEY_SIZE", "CryptnoxWallet_8cpp.html#a25455ff28b2a52bf37f6edf188eac678", null ],
     [ "CLIENT_PRIVATE_KEY_SIZE", "CryptnoxWallet_8cpp.html#a3d9fc2cad2d26fab3fa80d87949055df", null ],
     [ "CLIENT_PUBLIC_KEY_SIZE", "CryptnoxWallet_8cpp.html#ad1ecaf611e7c30f8cad8d7e54e3407f4", null ],
