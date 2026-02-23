@@ -21,15 +21,16 @@
 #define CARDEPHEMERALPUBKEY_SIZE                 64U
 #define AES_BLOCK_SIZE                           16U
 #define APDU_HEADER_LEN                            (4U)    /* CLA + INS + P1 + P2 */
+#define APDU_LC_LEN                                (1U)    /* Lc byte: length of the command data field */
 #define MAC_APDU_LEN                               (12U)   /* Length-encoding block used in MAC computation */
 #define INPUT_BUFFER_LIMIT                         (CW_USER_DATA_PAGE_SIZE)  /* Sized for writeUserData, the largest plaintext APDU payload */
 #define ENC_BUF_MAX_LEN                            (INPUT_BUFFER_LIMIT + AES_BLOCK_SIZE)
 #define MAX_MAC_DATA_LEN                           (APDU_HEADER_LEN + MAC_APDU_LEN + ENC_BUF_MAX_LEN)
-#define SEND_APDU_MAX_LEN                          (APDU_HEADER_LEN + 1U + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)
+#define SEND_APDU_MAX_LEN                          (APDU_HEADER_LEN + APDU_LC_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)
 
 /* Enforce that CW_USER_DATA_PAGE_SIZE fits within a single PN532 APDU (255 bytes max):
  * APDU_HEADER_LEN(4) + Lc(1) + MAC(AES_BLOCK_SIZE) + encrypted(ENC_BUF_MAX_LEN) <= 255 */
-static_assert(APDU_HEADER_LEN + 1U + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN <= 255U,
+static_assert(APDU_HEADER_LEN + APDU_LC_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN <= 255U,
               "CW_USER_DATA_PAGE_SIZE too large for PN532 single APDU transport");
 
 AESLib aesLib;
@@ -64,7 +65,7 @@ bool CryptnoxWallet::printPN532FirmwareVersion() {
  * @return true if the card was detected and secure channel was established successfully, false otherwise.
  */
 // cppcheck-suppress unusedFunction
- bool CryptnoxWallet::connect(CW_SecureSession& session) {
+bool CryptnoxWallet::connect(CW_SecureSession& session) {
     bool ret = false;
 
     /* Retry the full card activation sequence: inListPassiveTarget + delay + SELECT.
@@ -119,8 +120,8 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
             uint8_t cardEphemeralPubKey[CARDEPHEMERALPUBKEY_SIZE];
             if (extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey)) {
                 uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
-                uint8_t clientPrivateKey[32];
-                uint8_t clientPublicKey[64];
+                uint8_t clientPrivateKey[CLIENT_PRIVATE_KEY_SIZE];
+                uint8_t clientPublicKey[CLIENT_PUBLIC_KEY_SIZE];
                 const uECC_Curve_t* sessionCurve = uECC_secp256r1();
                 if (openSecureChannel(openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve)) {
                     if (mutuallyAuthenticate(session, openSecureChannelSalt, clientPublicKey, clientPrivateKey, sessionCurve, cardEphemeralPubKey)) {
@@ -348,11 +349,8 @@ bool CryptnoxWallet::openSecureChannel(uint8_t* salt, uint8_t* sessionPublicKey,
         if (driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
             if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
                 if (responseLength == RESPONSE_OPENSECURECHANNEL_IN_BYTES) {
-                    /* Remove status word from answer */
-                    size_t dataLength = OPENSECURECHANNEL_SALT_IN_BYTES;
-
                     /* Copy only the useful data (the salt) into the buffer */
-                    memcpy(salt, response, dataLength);
+                    memcpy(salt, response, OPENSECURECHANNEL_SALT_IN_BYTES);
 
                     serial.println(F("APDU exchange successful!"));    
                     ret = true;
@@ -428,7 +426,7 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
 
         /* Generate 256-bit random number */
         uint8_t RNG_data[32U] = { 0U };
-        if (uECC_RNG(RNG_data, 32U) != 1) {
+        if (uECC_RNG(RNG_data, sizeof(RNG_data)) != 1) {
             serial.println(F("Unable to generate 256-bit random number."));
             return false;
         }
@@ -440,7 +438,7 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         uint16_t cipherLength = aesLib.encrypt(reinterpret_cast<byte*>(RNG_data), sizeof(RNG_data), ciphertextOPC, session.aesKey, sizeof(session.aesKey), iv_opc);
 
         /* Compute MAC */
-        uint8_t opcApduHeader[5U] = { 0x80, 0x11, 0x00, 0x00, cipherLength + AES_BLOCK_SIZE };
+        uint8_t opcApduHeader[APDU_HEADER_LEN + APDU_LC_LEN] = { 0x80, 0x11, 0x00, 0x00, cipherLength + AES_BLOCK_SIZE };
         /* MAC_apduHeader: zero padded opcApduHeader */
         uint8_t MAC_apduHeader[AES_BLOCK_SIZE] = { 0U };
         memcpy(MAC_apduHeader, opcApduHeader, sizeof(opcApduHeader));
@@ -593,9 +591,6 @@ bool CryptnoxWallet::checkStatusWord(const uint8_t* response, uint8_t responseLe
 
         if ((sw1 == sw1Expected) && (sw2 == sw2Expected)) {
             ret = true;
-        }
-        else {
-            ret = false;
         }
     }
 
@@ -1169,7 +1164,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     memcpy(macValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     const uint8_t lc = (uint8_t)lcValue;
-    uint16_t sendApduLength = apduLength + 1U + sizeof(macValue) + encryptedLength;
+    uint16_t sendApduLength = apduLength + APDU_LC_LEN + sizeof(macValue) + encryptedLength;
     if (sendApduLength > SEND_APDU_MAX_LEN) {
         serial.println(F("Error: Send APDU length exceeds buffer."));
         return false;
@@ -1179,7 +1174,7 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     memcpy(s_apduBuf, apdu, apduLength);
     offset += apduLength;
     s_apduBuf[offset] = lc;
-    offset += 1U;
+    offset += APDU_LC_LEN;
     memcpy(s_apduBuf + offset, macValue, sizeof(macValue));
     offset += sizeof(macValue);
     memcpy(s_apduBuf + offset, s_dataBuf, encryptedLength);
@@ -1265,7 +1260,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
 
     /* First 16 bytes: length encoding + zero padding */
     memset(s_macBuf, 0U, AES_BLOCK_SIZE);   /* zero header block including bytes [1..15] */
-    s_macBuf[0] = (uint8_t)(totalDataLen & 0xFFU);
+    s_macBuf[0] = (uint8_t)totalDataLen;
 
     /* Append ALL ciphertext (not just first block) */
     memcpy(s_macBuf + AES_BLOCK_SIZE, rep_data, cipherLen);
