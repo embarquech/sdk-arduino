@@ -65,7 +65,7 @@ PN532Adapter::PN532Adapter(SerialDriver& serialDriver, uint8_t resetPin, Hardwar
 PN532Adapter::~PN532Adapter() {
     if (nfc) {
         delete nfc;
-        nfc = nullptr;
+        nfc = NULL;
     }
 }
 

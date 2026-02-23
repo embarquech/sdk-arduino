@@ -152,9 +152,9 @@ public:
     ///@}
 
 private:
-    SerialDriver* serial = nullptr; ///< Serial driver for debug output.
+    SerialDriver* serial = NULL; ///< Serial driver for debug output.
     PN532Interface interface; ///< The active interface type currently used.
-    Adafruit_PN532* nfc = nullptr; ///< Pointer to the underlying Adafruit_PN532 instance.
+    Adafruit_PN532* nfc = NULL; ///< Pointer to the underlying Adafruit_PN532 instance.
 };
 
 #endif // PN532ADAPTER_H
