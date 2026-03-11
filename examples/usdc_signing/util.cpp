@@ -27,6 +27,7 @@
  * @param[in] total_len Length in bytes of all list items concatenated.
  * @return Number of bytes written to header_output.
  */
+// cppcheck-suppress unusedFunction
 uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
 {
     if (total_len < 55)
@@ -70,6 +71,7 @@ uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
  * @param[in] input_len Length of input data.
  * @return Number of bytes written to output.
  */
+// cppcheck-suppress unusedFunction
 uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len)
 {
     if (input_len == 1 && input[0] == 0x00)
@@ -127,6 +129,7 @@ uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len
  * @param[in] val Unsigned 32-bit integer to convert.
  * @return Number of bytes written to the buffer.
  */
+// cppcheck-suppress unusedFunction
 uint32_t ConvertNumberToUintArray(uint8_t* str, uint32_t val)
 {
     uint32_t ret = 0;
@@ -156,6 +159,7 @@ uint32_t ConvertNumberToUintArray(uint8_t* str, uint32_t val)
  * @param[in] in_len Length of input buffer.
  * @return Number of bytes written to the output buffer.
  */
+// cppcheck-suppress unusedFunction
 size_t trimLeadingZeros(uint8_t* out, const uint8_t* in, size_t in_len)
 {
     size_t start = 0;

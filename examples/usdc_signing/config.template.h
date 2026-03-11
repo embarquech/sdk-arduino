@@ -23,8 +23,6 @@
  * ⚠️ NEVER COMMIT THIS FILE
  * Add config.h to .gitignore
  */
-#define PRIVATE_KEY_HEX   "<YOUR_PRIVATE_KEY_HEX>"
-
 /* =========================
  * Ethereum Addresses
  * ========================= */

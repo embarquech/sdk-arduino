@@ -102,6 +102,7 @@ static void keccakf(uint64_t st[25]) {
  * @note The output buffer must be at least 32 bytes long.
  * @note This is Ethereum's Keccak-256 (pre-SHA3 standard padding).
  */
+// cppcheck-suppress unusedFunction
 void keccak256(const uint8_t *in, size_t inlen, uint8_t out[32]) {
   uint64_t st[25];
   memset(st, 0, sizeof(st));
