@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['getcardcertificate_5fin_5fbytes_0',['GETCARDCERTIFICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#add6226a3b0f8dde62724922f00f0333a',1,'CryptnoxWallet.cpp']]],
-  ['getcardinfo_1',['getCardInfo',['../classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f',1,'CryptnoxWallet']]]
+  ['max_5ffee_0',['MAX_FEE',['../config_8template_8h.html#aa1422128431177dfd9fc34cc1694671c',1,'config.template.h']]],
+  ['max_5fpriority_5ffee_1',['MAX_PRIORITY_FEE',['../config_8template_8h.html#ad82bc6ec114eb1c53a0039c04111fc0e',1,'config.template.h']]]
 ];

@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['hash_0',['hash',['../structCW__SignRequest.html#a76ad3bbaf6808649883e60297aedd8ab',1,'CW_SignRequest']]],
-  ['hashlength_1',['hashLength',['../structCW__SignRequest.html#a60f7cef1c6aa6d327a678ae554365164',1,'CW_SignRequest']]]
+  ['private_5fkey_5fhex_0',['PRIVATE_KEY_HEX',['../config_8template_8h.html#ab93f81cd0f626f8205200c217b2a20d8',1,'config.template.h']]]
 ];

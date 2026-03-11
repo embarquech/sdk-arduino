@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['disconnect_0',['disconnect',['../classCryptnoxWallet.html#a5e52a31fba0f21862e588e1546ad1898',1,'CryptnoxWallet']]]
+  ['trimleadingzeros_0',['trimleadingzeros',['../util_8cpp.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp'],['../util_8h.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp']]]
 ];

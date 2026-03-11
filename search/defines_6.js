@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['opensecurechannel_5fsalt_5fin_5fbytes_0',['OPENSECURECHANNEL_SALT_IN_BYTES',['../CryptnoxWallet_8cpp.html#a5844cc731e45bc22143e8b5df0e5bbbe',1,'CryptnoxWallet.cpp']]]
+  ['private_5fkey_5fhex_0',['PRIVATE_KEY_HEX',['../config_8template_8h.html#ab93f81cd0f626f8205200c217b2a20d8',1,'config.template.h']]]
 ];
