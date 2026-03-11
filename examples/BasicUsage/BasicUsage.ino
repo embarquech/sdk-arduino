@@ -1,5 +1,5 @@
 /**
- * @file examples.ino
+ * @file BasicUsage.ino
  * @brief Example demonstrating the use of CryptnoxWallet with a PN532 module on Arduino.
  *
  * This sketch initializes the SPI bus and the PN532 NFC reader using the
@@ -7,9 +7,9 @@
  * processes wallet-specific APDU commands with granular step-by-step control.
  */
 
-#include "PN532Adapter.h"
-#include "CryptnoxWallet.h"
-#include "ArduinoSerialAdapter.h"
+#include <PN532Adapter.h>
+#include <CryptnoxWallet.h>
+#include <ArduinoSerialAdapter.h>
 
 /**
  * @def PN532_SS
@@ -33,7 +33,7 @@ CryptnoxWallet wallet(nfc, serialAdapter);
  */
 void setup() {
     serialAdapter.begin(115200);
-    
+
     /* Arduino R4: Wait 1s to get Serial ready */
     delay(1000);
 
@@ -60,20 +60,20 @@ void setup() {
  * 4. Clear session and reset reader
  */
 void loop() {
-    
+
     /* Step 1: Connect to card and establish secure channel */
     CW_SecureSession session;
     if (wallet.connect(session)) {
         serialAdapter.println(F("Card connected and secure channel established"));
-    
+
         /* Step 2: Verify PIN (checks secure channel internally) */
         serialAdapter.println(F("Verifying PIN..."));
         wallet.verifyPin(session, (const uint8_t*)DEFAULT_PIN, DEFAULT_PIN_LEN);
-    
+
         /* Step 3: Get card information (checks secure channel internally) */
         serialAdapter.println(F("Getting card information..."));
         wallet.getCardInfo(session);
-    
+
         /* Step 4: Sign a test hash (32 bytes of 0x01 for demo purposes) */
         /* NOTE: Card must have a seed loaded (via Python SDK: card.generate_seed(pin) */
         /*       or card.load_seed(seed, pin)) before signing will work.              */
@@ -117,10 +117,10 @@ void loop() {
 
         serialAdapter.println(F("Card processed successfully"));
     }
-    
+
     /* Always disconnect to reset reader for next card detection */
     wallet.disconnect(session);
-    
+
     /* Wait before next iteration */
     delay(1000);
 }

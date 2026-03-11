@@ -79,6 +79,7 @@ package "Crypto abstraction" {
         --
         - aes : AESLib
         - sha : SHA512
+        - trng : TRNG
     }
 }
 
@@ -147,6 +148,13 @@ package "External Libraries" <<Frame>> #FFFDE7 {
         + finalize(output, len) : void
     }
 
+    class "trng" as TRNGLib <<library>> {
+        + begin() : void
+        + fillRandom(buf, len) : bool
+        + random8(out) : bool
+        + random32(out) : bool
+    }
+
     class HardwareSerial <<Arduino>> {
         + begin(baudRate) : void
         + print(...) : size_t
@@ -177,6 +185,7 @@ ArduinoLoggerAdapter --> HardwareSerial
 ArduinoCryptoProvider *-- "1" AESLib
 ArduinoCryptoProvider ..> uECC
 ArduinoCryptoProvider *-- "1" SHA512
+ArduinoCryptoProvider *-- "1" TRNGLib
 PN532Adapter *-- "1" Adafruit_PN532
 
 @enduml

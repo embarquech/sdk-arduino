@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SHA512.h>
 #include <AES.h>
+#include <trng.h>
 #include "CryptnoxWallet.h"
 #include "AESLib.h"
 
@@ -518,18 +519,16 @@ int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
     int ret = 0;
 
     if ((dest != NULL) && (size > 0U)) {
-        /* Seed the RNG once; ideally done once in setup() */
-        static bool seeded = false;
-        if (seeded == false) {
-            randomSeed(analogRead(0U));
-            seeded = true;
+        /* Initialize the hardware TRNG once */
+        static bool initialized = false;
+        if (initialized == false) {
+            TRNG.begin();
+            initialized = true;
         }
 
-        for (uint16_t i = 0U; i < size; i++) {
-            dest[i] = (uint8_t)random(0U, 256U);
+        if (TRNG.fillRandom(dest, size)) {
+            ret = 1;
         }
-
-        ret = 1;
     }
 
     return ret;
@@ -792,7 +791,7 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
     CW_SignResult result;
 
     if (validateSignRequest(request, result)) {
-        uint8_t data[CW_HASH_SIZE + CW_MAX_PIN_LENGTH] = {0U};
+        uint8_t data[CW_HASH_SIZE + CW_MAX_DERIVE_PATH_LENGTH + CW_MAX_PIN_LENGTH] = {0U};
         uint16_t dataLength = 0U;
 
         buildSignPayload(request, data, dataLength);
@@ -869,16 +868,26 @@ bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignR
 }
 
 /**
- * @brief Builds the data payload for the SIGN APDU (hash + optional PIN).
+ * @brief Builds the data payload for the SIGN APDU (hash [+ BIP32 path] + optional PIN).
  *
- * @param[in]  request     The sign request containing hash and PIN data.
- * @param[out] data        Buffer to receive the payload (must be CW_HASH_SIZE + CW_MAX_PIN_LENGTH bytes).
+ * For CW_SIGN_DERIVE_K1/R1 modes, the path bytes are inserted between the hash and
+ * the PIN, matching the Python SDK sign(derivation=DERIVE) APDU structure.
+ *
+ * @param[in]  request     The sign request containing hash, derivePath and PIN data.
+ * @param[out] data        Buffer to receive the payload (must be CW_HASH_SIZE + CW_MAX_DERIVE_PATH_LENGTH + CW_MAX_PIN_LENGTH bytes).
  * @param[out] dataLength  Actual payload length written.
  */
 void CryptnoxWallet::buildSignPayload(const CW_SignRequest& request, uint8_t* data, uint16_t& dataLength)
 {
     dataLength = request.hashLength;
     memcpy(data, request.hash, request.hashLength);
+
+    /* For derive modes, append BIP32 path after hash */
+    if ((request.keyType == CW_SIGN_DERIVE_K1 || request.keyType == CW_SIGN_DERIVE_R1) &&
+        (request.derivePath != NULL) && (request.derivePathLength > 0U)) {
+        memcpy(data + dataLength, request.derivePath, request.derivePathLength);
+        dataLength += request.derivePathLength;
+    }
 
     /* Append PIN if not in PIN-less mode */
     if (!request.pinLessMode) {

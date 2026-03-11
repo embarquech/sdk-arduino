@@ -47,6 +47,7 @@
 
 #define CW_RAW_SIGNATURE_SIZE         (64U)    /**< Raw signature size (r[32] + s[32]) */
 #define CW_HASH_SIZE                  (32U)    /**< Standard hash size (SHA-256, Keccak-256) */
+#define CW_MAX_DERIVE_PATH_LENGTH     (20U)    /**< Max BIP32 path bytes (5 levels × 4 bytes) */
 #define CW_MIN_PIN_LENGTH              (4U)    /**< Minimum PIN code length (digits) */
 #define CW_MAX_PIN_LENGTH              (9U)    /**< Maximum PIN code length (digits) */
 
@@ -101,12 +102,14 @@ struct CW_SecureSession {
  */
 struct CW_SignRequest {
     CW_SecureSession& session;       /**< Reference to a valid secure session */
-    uint8_t keyType;                 /**< Key / path type (e.g. CW_SIGN_CURR_K1, CW_SIGN_DERIVE_R1) */
+    uint8_t keyType;                 /**< Key / path type (e.g. CW_SIGN_CURR_K1, CW_SIGN_DERIVE_K1) */
     uint8_t signatureType;           /**< Signature type (e.g. CW_SIGN_SIG_ECDSA_LOW_S) */
     uint8_t pin[CW_MAX_PIN_LENGTH];  /**< PIN must contain 6 to 9 digits */
     bool pinLessMode;                /**< false = PIN path, true = PIN-less path */
     const uint8_t* hash;             /**< Pointer to the hash to sign (typically 32 bytes) */
     uint8_t hashLength;              /**< Length of the hash in bytes */
+    const uint8_t* derivePath;       /**< BIP32 path bytes for CW_SIGN_DERIVE_K1/R1 (NULL for CURR modes) */
+    uint8_t derivePathLength;        /**< Length of derivePath in bytes (must be a multiple of 4) */
 
     /**
      * @brief Construct a CW_SignRequest with required parameters.
@@ -120,7 +123,8 @@ struct CW_SignRequest {
                             uint8_t sigType = CW_SIGN_SIG_ECDSA_LOW_S,
                             bool pinless = CW_SIGN_WITH_PIN)
         : session(sess), keyType(kType), signatureType(sigType),
-          pinLessMode(pinless), hash(NULL), hashLength(0U) {
+          pinLessMode(pinless), hash(NULL), hashLength(0U),
+          derivePath(NULL), derivePathLength(0U) {
         memset(pin, 0U, sizeof(pin));
     }
 };
