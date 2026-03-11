@@ -9,7 +9,6 @@ var config_8template_8h =
     [ "INFURA_PROJECT_ID", "config_8template_8h.html#ac64c550681f311b1b80660013ccd23ab", null ],
     [ "MAX_FEE", "config_8template_8h.html#aa1422128431177dfd9fc34cc1694671c", null ],
     [ "MAX_PRIORITY_FEE", "config_8template_8h.html#ad82bc6ec114eb1c53a0039c04111fc0e", null ],
-    [ "PRIVATE_KEY_HEX", "config_8template_8h.html#ab93f81cd0f626f8205200c217b2a20d8", null ],
     [ "RPC_HOST", "config_8template_8h.html#afa1011b5b2bd4fec9c673bb2721f7410", null ],
     [ "RPC_PORT", "config_8template_8h.html#a320785b5c2c9887101e29d7594f0520f", null ],
     [ "WIFI_PASSWORD", "config_8template_8h.html#a8685d8aff7e570048090a3a51afceb07", null ],
