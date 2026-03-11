@@ -29,6 +29,7 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
             --force \
             -DSTATIC_ANALYSIS=1 \
             .
