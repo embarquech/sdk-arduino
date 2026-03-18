@@ -65,6 +65,21 @@
  * 3. Typedefs / enum / structs
  ******************************************************************/
 
+/** @brief Pointer to a function that returns one byte of true random data. */
+typedef uint8_t (*TRNG_Func)();
+
+/**
+ * @brief Securely erase a sensitive buffer, resistant to compiler optimization.
+ *
+ * Two-pass wipe: first overwrites with TRNG bytes, then zeros via a volatile
+ * pointer so the compiler cannot elide the writes.
+ *
+ * @param buf           Pointer to the buffer to erase.
+ * @param len           Number of bytes to erase.
+ * @param trng_getbyte  Callback that returns one byte of true random data.
+ */
+void secure_wipe(uint8_t *buf, size_t len, TRNG_Func trng_getbyte);
+
 /**
  * @struct CW_SecureSession
  * @brief Holds cryptographic session state for reentrant secure channel operations.
@@ -86,10 +101,10 @@ struct CW_SecureSession {
     }
 
     /** @brief Securely clear all session keys and IV. */
-    void clear() {
-        memset(aesKey, 0U, sizeof(aesKey));
-        memset(macKey, 0U, sizeof(macKey));
-        memset(iv, 0U, sizeof(iv));
+    void clear(TRNG_Func trng) {
+        secure_wipe(aesKey, sizeof(aesKey), trng);
+        secure_wipe(macKey, sizeof(macKey), trng);
+        secure_wipe(iv, sizeof(iv), trng);
     }
 };
 
@@ -435,6 +450,12 @@ private:
      * @return 1 on success.
      */
     static int uECC_RNG(uint8_t *dest, unsigned size);
+
+    /**
+     * @brief Single-byte TRNG adapter for use as a TRNG_Func callback.
+     * @return One random byte.
+     */
+    static uint8_t trng_byte();
 };
 
 #endif // CRYPTNOXWALLET_H

@@ -158,7 +158,7 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
 void CryptnoxWallet::disconnect(CW_SecureSession& session) {
     /* Only clear session keys if secure channel was open */
     if (isSecureChannelOpen(session)) {
-        session.clear();
+        session.clear(trng_byte);
     }
     
     /* Always reset reader for next card detection */
@@ -428,6 +428,10 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         uint8_t RNG_data[32U] = { 0U };
         if (uECC_RNG(RNG_data, sizeof(RNG_data)) != 1) {
             serial.println(F("Unable to generate 256-bit random number."));
+            secure_wipe(sharedSecret, sizeof(sharedSecret), trng_byte);
+            secure_wipe(sha512Output, sizeof(sha512Output), trng_byte);
+            secure_wipe(concat, sizeof(concat), trng_byte);
+            secure_wipe(RNG_data, sizeof(RNG_data), trng_byte);
             return false;
         }
 
@@ -447,8 +451,13 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         uint8_t MAC_data[64U] = { 0U };          /* MAC_apduHeader(16) + ciphertextOPC(48) = 64 bytes */
         uint8_t ciphertextMACLong[64U] = { 0U }; /* encrypt(MAC_data[64]) with Null padding = 64 bytes */
         if (MAC_data_length > sizeof(MAC_data)) {
+            secure_wipe(sharedSecret, sizeof(sharedSecret), trng_byte);
+            secure_wipe(sha512Output, sizeof(sha512Output), trng_byte);
+            secure_wipe(concat, sizeof(concat), trng_byte);
+            secure_wipe(RNG_data, sizeof(RNG_data), trng_byte);
+            secure_wipe(ciphertextOPC, sizeof(ciphertextOPC), trng_byte);
             return false;
-        } 
+        }
 
         /* Data to cipher: MAC_data = MAC_apduHeader (zero padded opcApduHeader to equal AES_BLOCK_SIZE) || ciphertextOPC */
         memcpy(MAC_data, MAC_apduHeader, sizeof(MAC_apduHeader));
@@ -495,12 +504,12 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         }
 
         /* Secure cleanup */
-        memset(sharedSecret, 0U, sizeof(sharedSecret));
-        memset(sha512Output, 0U, sizeof(sha512Output));
-        memset(concat, 0U, sizeof(concat));
-        memset(RNG_data, 0U, sizeof(RNG_data));
-        memset(ciphertextOPC, 0U, sizeof(ciphertextOPC));
-        memset(MAC_data, 0U, sizeof(MAC_data));
+        secure_wipe(sharedSecret, sizeof(sharedSecret), trng_byte);
+        secure_wipe(sha512Output, sizeof(sha512Output), trng_byte);
+        secure_wipe(concat, sizeof(concat), trng_byte);
+        secure_wipe(RNG_data, sizeof(RNG_data), trng_byte);
+        secure_wipe(ciphertextOPC, sizeof(ciphertextOPC), trng_byte);
+        secure_wipe(MAC_data, sizeof(MAC_data), trng_byte);
     }
 
     return ret;
@@ -533,6 +542,25 @@ int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
     }
 
     return ret;
+}
+
+uint8_t CryptnoxWallet::trng_byte() {
+    uint8_t b;
+    uECC_RNG(&b, 1U);
+    return b;
+}
+
+void secure_wipe(uint8_t *buf, size_t len, TRNG_Func trng_getbyte) {
+    /* First pass: overwrite with TRNG data */
+    for (size_t i = 0U; i < len; i++) {
+        buf[i] = trng_getbyte();
+    }
+
+    /* Second pass: overwrite with zeros (volatile prevents optimization) */
+    volatile uint8_t *p = buf;
+    for (size_t i = 0U; i < len; i++) {
+        p[i] = 0U;
+    }
 }
 
 /**
