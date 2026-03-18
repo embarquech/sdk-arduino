@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['keccak256_0',['keccak256',['../keccak256_8cpp.html#a87cdb4f920d99d36b7020b14cb4b31ce',1,'keccak256(const uint8_t *in, size_t inlen, uint8_t out[32]):&#160;keccak256.cpp'],['../keccak256_8h.html#a87cdb4f920d99d36b7020b14cb4b31ce',1,'keccak256(const uint8_t *in, size_t inlen, uint8_t out[32]):&#160;keccak256.cpp']]],
-  ['keccak256_2ecpp_1',['keccak256.cpp',['../keccak256_8cpp.html',1,'']]],
-  ['keccak256_2eh_2',['keccak256.h',['../keccak256_8h.html',1,'']]],
-  ['keccak_5frounds_3',['KECCAK_ROUNDS',['../keccak256_8cpp.html#aaf66c2daa0f1fe906b80b79969f67424',1,'keccak256.cpp']]]
+  ['enc_5fbuf_5fmax_5flen_0',['ENC_BUF_MAX_LEN',['../CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f',1,'CryptnoxWallet.cpp']]],
+  ['errorcode_1',['errorCode',['../structCW__SignResult.html#a75988aa74d72c0d8923e8b30765f251c',1,'CW_SignResult']]],
+  ['establishsecurechannel_2',['establishSecureChannel',['../classCryptnoxWallet.html#a8584e36b3c8c088ad1ee18358246262e',1,'CryptnoxWallet']]]
 ];

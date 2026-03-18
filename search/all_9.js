@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['wifi_5fpassword_0',['WIFI_PASSWORD',['../config_8template_8h.html#a8685d8aff7e570048090a3a51afceb07',1,'config.template.h']]],
-  ['wifi_5fssid_1',['WIFI_SSID',['../config_8template_8h.html#a586542b79d00e4db7e1d5a667ae83a2b',1,'config.template.h']]]
+  ['mac_5fapdu_5flen_0',['MAC_APDU_LEN',['../CryptnoxWallet_8cpp.html#a0b74aad04ccbaf30f26246881b88ab41',1,'CryptnoxWallet.cpp']]],
+  ['mackey_1',['macKey',['../structCW__SecureSession.html#a1ed577efda4e4071cd585fbf1e922f88',1,'CW_SecureSession']]],
+  ['max_5fmac_5fdata_5flen_2',['MAX_MAC_DATA_LEN',['../CryptnoxWallet_8cpp.html#a8ed6716688e9a986a27784d937607b98',1,'CryptnoxWallet.cpp']]]
 ];
