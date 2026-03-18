@@ -66,6 +66,20 @@
  ******************************************************************/
 
 /**
+ * @brief Constant-time buffer comparison, resistant to timing side-channel attacks.
+ *
+ * Always iterates over the full length regardless of where the first difference
+ * occurs, preventing an attacker from inferring the correct value byte-by-byte
+ * via timing measurements.
+ *
+ * @param a   Pointer to the first buffer.
+ * @param b   Pointer to the second buffer.
+ * @param len Number of bytes to compare.
+ * @return true if the buffers are identical, false otherwise.
+ */
+bool secure_compare(const uint8_t* a, const uint8_t* b, size_t len);
+
+/**
  * @struct CW_SecureSession
  * @brief Holds cryptographic session state for reentrant secure channel operations.
  *
