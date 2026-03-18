@@ -535,6 +535,14 @@ int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
     return ret;
 }
 
+bool secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
+    uint8_t diff = 0U;
+    for (size_t i = 0U; i < len; i++) {
+        diff |= a[i] ^ b[i];
+    }
+    return diff == 0U;
+}
+
 /**
  * @brief Print an APDU in hexadecimal format to Serial for debugging.
  * 
@@ -1276,7 +1284,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
-    if (memcmp(rep_mac, recomputedMacValue, AES_BLOCK_SIZE) == 0) {
+    if (secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         serial.println(F("MACs match"));
     } else {
         serial.println(F("MAC mismatch"));
