@@ -154,9 +154,9 @@ Macros</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a427c2445cbdd482ab94a3e1f2138ed35" id="r_a427c2445cbdd482ab94a3e1f2138ed35"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a427c2445cbdd482ab94a3e1f2138ed35">secure_wipe</a> (uint8_t *buf, size_t len, <a class="el" href="CryptnoxWallet_8h.html#a7c44a0b68cb67188189c755ab78e956d">TRNG_Func</a> trng_getbyte)</td></tr>
-<tr class="memdesc:a427c2445cbdd482ab94a3e1f2138ed35"><td class="mdescLeft">&#160;</td><td class="mdescRight">Securely erase a sensitive buffer, resistant to compiler optimization.  <br /></td></tr>
-<tr class="separator:a427c2445cbdd482ab94a3e1f2138ed35"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a68a494d9034dc95679f7d405f641abf0" id="r_a68a494d9034dc95679f7d405f641abf0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a68a494d9034dc95679f7d405f641abf0">secure_compare</a> (const uint8_t *a, const uint8_t *b, size_t len)</td></tr>
+<tr class="memdesc:a68a494d9034dc95679f7d405f641abf0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constant-time buffer comparison, resistant to timing side-channel attacks.  <br /></td></tr>
+<tr class="separator:a68a494d9034dc95679f7d405f641abf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -459,29 +459,29 @@ Variables</h2></td></tr>
 </div>
 </div>
 <h2 class="groupheader">Function Documentation</h2>
-<a id="a427c2445cbdd482ab94a3e1f2138ed35" name="a427c2445cbdd482ab94a3e1f2138ed35"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a427c2445cbdd482ab94a3e1f2138ed35">&#9670;&#160;</a></span>secure_wipe()</h2>
+<a id="a68a494d9034dc95679f7d405f641abf0" name="a68a494d9034dc95679f7d405f641abf0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a68a494d9034dc95679f7d405f641abf0">&#9670;&#160;</a></span>secure_compare()</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">void secure_wipe </td>
+          <td class="memname">bool secure_compare </td>
           <td>(</td>
-          <td class="paramtype">uint8_t *&#160;</td>
-          <td class="paramname"><em>buf</em>, </td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>b</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">size_t&#160;</td>
-          <td class="paramname"><em>len</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype"><a class="el" href="CryptnoxWallet_8h.html#a7c44a0b68cb67188189c755ab78e956d">TRNG_Func</a>&#160;</td>
-          <td class="paramname"><em>trng_getbyte</em>&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -491,16 +491,17 @@ Variables</h2></td></tr>
       </table>
 </div><div class="memdoc">
 
-<p>Securely erase a sensitive buffer, resistant to compiler optimization. </p>
-<p>Two-pass wipe: first overwrites with TRNG bytes, then zeros via a volatile pointer so the compiler cannot elide the writes.</p>
+<p>Constant-time buffer comparison, resistant to timing side-channel attacks. </p>
+<p>Always iterates over the full length regardless of where the first difference occurs, preventing an attacker from inferring the correct value byte-by-byte via timing measurements.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">buf</td><td>Pointer to the buffer to erase. </td></tr>
-    <tr><td class="paramname">len</td><td>Number of bytes to erase. </td></tr>
-    <tr><td class="paramname">trng_getbyte</td><td>Callback that returns one byte of true random data. </td></tr>
+    <tr><td class="paramname">a</td><td>Pointer to the first buffer. </td></tr>
+    <tr><td class="paramname">b</td><td>Pointer to the second buffer. </td></tr>
+    <tr><td class="paramname">len</td><td>Number of bytes to compare. </td></tr>
   </table>
   </dd>
 </dl>
+<dl class="section return"><dt>Returns</dt><dd>true if the buffers are identical, false otherwise. </dd></dl>
 
 </div>
 </div>

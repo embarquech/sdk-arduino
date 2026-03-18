@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['secure_5fwipe_0',['secure_wipe',['../CryptnoxWallet_8cpp.html#a427c2445cbdd482ab94a3e1f2138ed35',1,'secure_wipe(uint8_t *buf, size_t len, TRNG_Func trng_getbyte):&#160;CryptnoxWallet.cpp'],['../CryptnoxWallet_8h.html#a427c2445cbdd482ab94a3e1f2138ed35',1,'secure_wipe(uint8_t *buf, size_t len, TRNG_Func trng_getbyte):&#160;CryptnoxWallet.cpp']]],
+  ['secure_5fcompare_0',['secure_compare',['../CryptnoxWallet_8cpp.html#a68a494d9034dc95679f7d405f641abf0',1,'secure_compare(const uint8_t *a, const uint8_t *b, size_t len):&#160;CryptnoxWallet.cpp'],['../CryptnoxWallet_8h.html#a68a494d9034dc95679f7d405f641abf0',1,'secure_compare(const uint8_t *a, const uint8_t *b, size_t len):&#160;CryptnoxWallet.cpp']]],
   ['send_5fapdu_5fmax_5flen_1',['SEND_APDU_MAX_LEN',['../CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8',1,'CryptnoxWallet.cpp']]],
   ['sendapdu_2',['sendapdu',['../classNFCDriver.html#a314f98a89a9c8b5f3f7c3cd186b071bb',1,'NFCDriver::sendAPDU()'],['../classPN532Adapter.html#a2a51721c2f9c8504328a5fad57792c67',1,'PN532Adapter::sendAPDU()']]],
   ['serialdriver_3',['SerialDriver',['../classSerialDriver.html',1,'']]],
