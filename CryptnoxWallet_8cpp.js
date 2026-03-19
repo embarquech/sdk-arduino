@@ -21,6 +21,5 @@ var CryptnoxWallet_8cpp =
     [ "RESPONSE_SELECT_IN_BYTES", "CryptnoxWallet_8cpp.html#a460ee1a0f1a0e3420b7f4f621b35157b", null ],
     [ "RESPONSE_STATUS_WORDS_IN_BYTES", "CryptnoxWallet_8cpp.html#a06c6580716e31d8e2dc06ce292908f0c", null ],
     [ "SEND_APDU_MAX_LEN", "CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8", null ],
-    [ "secure_compare", "CryptnoxWallet_8cpp.html#a68a494d9034dc95679f7d405f641abf0", null ],
     [ "aesLib", "CryptnoxWallet_8cpp.html#a11928a5b41d2d27f52eb65dcb415c15f", null ]
 ];

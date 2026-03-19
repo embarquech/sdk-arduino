@@ -91,7 +91,6 @@ $(document).ready(function(){initNavTree('CryptnoxWallet_8cpp.html',''); initRes
 <div class="header">
   <div class="summary">
 <a href="#define-members">Macros</a> &#124;
-<a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle"><div class="title">CryptnoxWallet.cpp File Reference</div></div>
 </div><!--header-->
@@ -100,11 +99,12 @@ $(document).ready(function(){initNavTree('CryptnoxWallet_8cpp.html',''); initRes
 <code>#include &lt;SHA512.h&gt;</code><br />
 <code>#include &lt;AES.h&gt;</code><br />
 <code>#include &quot;<a class="el" href="CryptnoxWallet_8h_source.html">CryptnoxWallet.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="CryptnoxUtils_8h_source.html">CryptnoxUtils.h</a>&quot;</code><br />
 <code>#include &quot;AESLib.h&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for CryptnoxWallet.cpp:</div>
 <div class="dyncontent">
-<div class="center"><iframe scrolling="no" frameborder="0" src="CryptnoxWallet_8cpp__incl.svg" width="463" height="256"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
+<div class="center"><iframe scrolling="no" frameborder="0" src="CryptnoxWallet_8cpp__incl.svg" width="559" height="256"><p><b>This browser is not able to show SVG: try Firefox, Chrome, Safari, or Opera instead.</b></p></iframe></div>
 </div>
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="define-members" name="define-members"></a>
@@ -151,12 +151,6 @@ Macros</h2></td></tr>
 <tr class="separator:a8ed6716688e9a986a27784d937607b98"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:acb48e7c75b9b39117ac42c6dda5676b8" id="r_acb48e7c75b9b39117ac42c6dda5676b8"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#acb48e7c75b9b39117ac42c6dda5676b8">SEND_APDU_MAX_LEN</a>&#160;&#160;&#160;(<a class="el" href="CryptnoxWallet_8cpp.html#a70b35c86e614c88ec439c71088d326bb">APDU_HEADER_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#a719b105508d88a18dc17bd5c240bdcf6">APDU_LC_LEN</a> + <a class="el" href="CryptnoxWallet_8cpp.html#af19ab913a847ad1e91c5291215116de1">AES_BLOCK_SIZE</a> + <a class="el" href="CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f">ENC_BUF_MAX_LEN</a>)</td></tr>
 <tr class="separator:acb48e7c75b9b39117ac42c6dda5676b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
-Functions</h2></td></tr>
-<tr class="memitem:a68a494d9034dc95679f7d405f641abf0" id="r_a68a494d9034dc95679f7d405f641abf0"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="CryptnoxWallet_8cpp.html#a68a494d9034dc95679f7d405f641abf0">secure_compare</a> (const uint8_t *a, const uint8_t *b, size_t len)</td></tr>
-<tr class="memdesc:a68a494d9034dc95679f7d405f641abf0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Constant-time buffer comparison, resistant to timing side-channel attacks.  <br /></td></tr>
-<tr class="separator:a68a494d9034dc95679f7d405f641abf0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -455,53 +449,6 @@ Variables</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-
-</div>
-</div>
-<h2 class="groupheader">Function Documentation</h2>
-<a id="a68a494d9034dc95679f7d405f641abf0" name="a68a494d9034dc95679f7d405f641abf0"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a68a494d9034dc95679f7d405f641abf0">&#9670;&#160;</a></span>secure_compare()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool secure_compare </td>
-          <td>(</td>
-          <td class="paramtype">const uint8_t *&#160;</td>
-          <td class="paramname"><em>a</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">const uint8_t *&#160;</td>
-          <td class="paramname"><em>b</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">size_t&#160;</td>
-          <td class="paramname"><em>len</em>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Constant-time buffer comparison, resistant to timing side-channel attacks. </p>
-<p>Always iterates over the full length regardless of where the first difference occurs, preventing an attacker from inferring the correct value byte-by-byte via timing measurements.</p>
-<dl class="params"><dt>Parameters</dt><dd>
-  <table class="params">
-    <tr><td class="paramname">a</td><td>Pointer to the first buffer. </td></tr>
-    <tr><td class="paramname">b</td><td>Pointer to the second buffer. </td></tr>
-    <tr><td class="paramname">len</td><td>Number of bytes to compare. </td></tr>
-  </table>
-  </dd>
-</dl>
-<dl class="section return"><dt>Returns</dt><dd>true if the buffers are identical, false otherwise. </dd></dl>
 
 </div>
 </div>

@@ -1,6 +1,7 @@
 var annotated_dup =
 [
     [ "ArduinoSerialAdapter", "classArduinoSerialAdapter.html", "classArduinoSerialAdapter" ],
+    [ "CryptnoxUtils", "classCryptnoxUtils.html", null ],
     [ "CryptnoxWallet", "classCryptnoxWallet.html", "classCryptnoxWallet" ],
     [ "CW_SecureSession", "structCW__SecureSession.html", "structCW__SecureSession" ],
     [ "CW_SignRequest", "structCW__SignRequest.html", "structCW__SignRequest" ],

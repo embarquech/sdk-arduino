@@ -1,5 +1,6 @@
 var hierarchy =
 [
+    [ "CryptnoxUtils", "classCryptnoxUtils.html", null ],
     [ "CryptnoxWallet", "classCryptnoxWallet.html", null ],
     [ "CW_SecureSession", "structCW__SecureSession.html", null ],
     [ "CW_SignRequest", "structCW__SignRequest.html", null ],

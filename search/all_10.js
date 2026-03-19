@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['verifypin_0',['verifyPin',['../classCryptnoxWallet.html#a74713d860921c1eb192d86c9d12b4dc2',1,'CryptnoxWallet']]]
+  ['uart_0',['UART',['../PN532Adapter_8h.html#a7e0449d50e07074f7465a9657f5601fdacec5769b01fb096efaf0d6186823c78f',1,'PN532Adapter.h']]],
+  ['uecc_5frng_5fcallback_1',['uECC_rng_callback',['../classCryptnoxUtils.html#a0f3fe157ddfdc1dc053e48470038c967',1,'CryptnoxUtils']]]
 ];
