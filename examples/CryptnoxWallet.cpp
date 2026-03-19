@@ -2,6 +2,7 @@
 #include <SHA512.h>
 #include <AES.h>
 #include "CryptnoxWallet.h"
+#include "CryptnoxUtils.h"
 #include "AESLib.h"
 
 #define RESPONSE_GETCARDCERTIFICATE_IN_BYTES    148U
@@ -261,7 +262,7 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
         };
 
         /* Generate 8 random bytes */
-        uECC_RNG(randomBytes, RANDOM_BYTES);
+        CryptnoxUtils::uECC_rng_callback(randomBytes, RANDOM_BYTES);
 
         /* Final APDU = header + 8 random bytes */
         uint8_t fullApdu[sizeof(getCardCertificateApdu) + RANDOM_BYTES];
@@ -311,7 +312,7 @@ bool CryptnoxWallet::openSecureChannel(uint8_t* salt, uint8_t* sessionPublicKey,
     bool ret = false;
 
     /* ECC setup and random generation */
-    uECC_set_rng(&uECC_RNG);
+    uECC_set_rng(&CryptnoxUtils::uECC_rng_callback);
 
     /* Generate keypair */
     bool eccSuccess = uECC_make_key(sessionPublicKey, sessionPrivateKey, sessionCurve);
@@ -426,7 +427,7 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
 
         /* Generate 256-bit random number */
         uint8_t RNG_data[32U] = { 0U };
-        if (uECC_RNG(RNG_data, sizeof(RNG_data)) != 1) {
+        if (CryptnoxUtils::uECC_rng_callback(RNG_data, sizeof(RNG_data)) != 1) {
             serial.println(F("Unable to generate 256-bit random number."));
             return false;
         }
@@ -504,43 +505,6 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
     }
 
     return ret;
-}
-
-/**
- * @brief RNG callback used by the micro-ecc library.
- * 
- * Fills the provided buffer with cryptographically random bytes.
- * @param dest Pointer to the buffer to fill.
- * @param size Number of bytes to generate.
- * @return 1 on success.
- */
-int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
-    int ret = 0;
-
-    if ((dest != NULL) && (size > 0U)) {
-        /* Seed the RNG once; ideally done once in setup() */
-        static bool seeded = false;
-        if (seeded == false) {
-            randomSeed(analogRead(0U));
-            seeded = true;
-        }
-
-        for (uint16_t i = 0U; i < size; i++) {
-            dest[i] = (uint8_t)random(0U, 256U);
-        }
-
-        ret = 1;
-    }
-
-    return ret;
-}
-
-bool secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
-    uint8_t diff = 0U;
-    for (size_t i = 0U; i < len; i++) {
-        diff |= a[i] ^ b[i];
-    }
-    return diff == 0U;
 }
 
 /**
@@ -1284,7 +1248,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
-    if (secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
+    if (CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         serial.println(F("MACs match"));
     } else {
         serial.println(F("MAC mismatch"));
