@@ -9,6 +9,7 @@
 #include "NFCDriver.h"
 #include "SerialDriver.h"
 #include "uECC.h"
+#include "CryptnoxUtils.h"
 
 /******************************************************************
  * 2. Constants / define declarations
@@ -64,20 +65,6 @@
 /******************************************************************
  * 3. Typedefs / enum / structs
  ******************************************************************/
-
-/**
- * @brief Constant-time buffer comparison, resistant to timing side-channel attacks.
- *
- * Always iterates over the full length regardless of where the first difference
- * occurs, preventing an attacker from inferring the correct value byte-by-byte
- * via timing measurements.
- *
- * @param a   Pointer to the first buffer.
- * @param b   Pointer to the second buffer.
- * @param len Number of bytes to compare.
- * @return true if the buffers are identical, false otherwise.
- */
-bool secure_compare(const uint8_t* a, const uint8_t* b, size_t len);
 
 /**
  * @struct CW_SecureSession
@@ -442,13 +429,6 @@ private:
     bool extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result);
     void debugPrintSignature(const uint8_t* signature);
 
-    /**
-     * @brief RNG callback for micro-ecc library.
-     * @param dest Pointer to buffer to fill with random bytes.
-     * @param size Number of bytes to generate.
-     * @return 1 on success.
-     */
-    static int uECC_RNG(uint8_t *dest, unsigned size);
 };
 
 #endif // CRYPTNOXWALLET_H
