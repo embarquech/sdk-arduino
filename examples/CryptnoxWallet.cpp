@@ -427,6 +427,7 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
 
         /* Generate 256-bit random number */
         uint8_t RNG_data[32U] = { 0U };
+        // cppcheck-suppress misra-config
         if (CryptnoxUtils::uECC_rng_callback(RNG_data, sizeof(RNG_data)) != 1) {
             serial.println(F("Unable to generate 256-bit random number."));
             return false;
@@ -1248,6 +1249,7 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
+    // cppcheck-suppress misra-config
     if (CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         serial.println(F("MACs match"));
     } else {
