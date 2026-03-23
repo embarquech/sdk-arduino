@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['getcardinfo_0',['getCardInfo',['../classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f',1,'CryptnoxWallet']]]
+  ['uecc_5frng_5fcallback_0',['uECC_rng_callback',['../classCryptnoxUtils.html#a0f3fe157ddfdc1dc053e48470038c967',1,'CryptnoxUtils']]]
 ];
