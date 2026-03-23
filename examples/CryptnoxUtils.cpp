@@ -1,5 +1,6 @@
 #include "CryptnoxUtils.h"
 
+// cppcheck-suppress unusedFunction
 bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
     uint8_t diff = 0U;
     for (size_t i = 0U; i < len; i++) {
@@ -25,6 +26,7 @@ uint8_t CryptnoxUtils::trng_byte() {
     return (uint8_t)random(0U, 256U);
 }
 
+// cppcheck-suppress unusedFunction
 int CryptnoxUtils::uECC_rng_callback(uint8_t* dest, unsigned size) {
     int ret = 0;
 
