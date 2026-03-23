@@ -3,6 +3,7 @@
 #include <AES.h>
 #include <trng.h>
 #include "CryptnoxWallet.h"
+#include "CryptnoxUtils.h"
 #include "AESLib.h"
 
 #define RESPONSE_GETCARDCERTIFICATE_IN_BYTES    148U
@@ -262,7 +263,7 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
         };
 
         /* Generate 8 random bytes */
-        uECC_RNG(randomBytes, RANDOM_BYTES);
+        CryptnoxUtils::uECC_rng_callback(randomBytes, RANDOM_BYTES);
 
         /* Final APDU = header + 8 random bytes */
         uint8_t fullApdu[sizeof(getCardCertificateApdu) + RANDOM_BYTES];
@@ -312,7 +313,7 @@ bool CryptnoxWallet::openSecureChannel(uint8_t* salt, uint8_t* sessionPublicKey,
     bool ret = false;
 
     /* ECC setup and random generation */
-    uECC_set_rng(&uECC_RNG);
+    uECC_set_rng(&CryptnoxUtils::uECC_rng_callback);
 
     /* Generate keypair */
     bool eccSuccess = uECC_make_key(sessionPublicKey, sessionPrivateKey, sessionCurve);
@@ -427,7 +428,8 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
 
         /* Generate 256-bit random number */
         uint8_t RNG_data[32U] = { 0U };
-        if (uECC_RNG(RNG_data, sizeof(RNG_data)) != 1) {
+        // cppcheck-suppress misra-config
+        if (CryptnoxUtils::uECC_rng_callback(RNG_data, sizeof(RNG_data)) != 1) {
             serial.println(F("Unable to generate 256-bit random number."));
             return false;
         }
@@ -1285,7 +1287,8 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     /* Compare received MAC with computed MAC */
-    if (memcmp(rep_mac, recomputedMacValue, AES_BLOCK_SIZE) == 0) {
+    // cppcheck-suppress misra-config
+    if (CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         serial.println(F("MACs match"));
     } else {
         serial.println(F("MAC mismatch"));

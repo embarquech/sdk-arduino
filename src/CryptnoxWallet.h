@@ -9,6 +9,7 @@
 #include "NFCDriver.h"
 #include "SerialDriver.h"
 #include "uECC.h"
+#include "CryptnoxUtils.h"
 
 /******************************************************************
  * 2. Constants / define declarations
@@ -432,13 +433,6 @@ private:
     bool extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result);
     void debugPrintSignature(const uint8_t* signature);
 
-    /**
-     * @brief RNG callback for micro-ecc library.
-     * @param dest Pointer to buffer to fill with random bytes.
-     * @param size Number of bytes to generate.
-     * @return 1 on success.
-     */
-    static int uECC_RNG(uint8_t *dest, unsigned size);
 };
 
 #endif // CRYPTNOXWALLET_H
