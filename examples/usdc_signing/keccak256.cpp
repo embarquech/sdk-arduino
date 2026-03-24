@@ -1,5 +1,5 @@
 /**
- * @file keccak256.c
+ * @file keccak256.cpp
  * @brief Keccak-256 (SHA3 variant) hash implementation for Ethereum.
  *
  * Implements Keccak-256 hashing suitable for Ethereum-style hashing,
@@ -10,10 +10,10 @@
 #include "keccak256.h"
 #include <string.h>
 
-/// Number of rounds for the Keccak-f[1600] permutation
+// Number of rounds for the Keccak-f[1600] permutation
 #define KECCAK_ROUNDS 24
 
-/// Round constants for Keccak-f[1600]
+// Round constants for Keccak-f[1600]
 static const uint64_t keccakf_rndc[24] = {
   0x0000000000000001ULL, 0x0000000000008082ULL,
   0x800000000000808aULL, 0x8000000080008000ULL,

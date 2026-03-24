@@ -4,6 +4,43 @@
 #include "util.h"
 
 /**
+ * @brief Convert a hexadecimal character to a byte value.
+ * @param c Hex character
+ * @return Binary value (0-15)
+ */
+uint8_t fromHex(char c) {
+    if (c >= '0' && c <= '9') return c - '0';
+    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
+    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
+    return 0;
+}
+
+/**
+ * @brief Convert a hex string to a byte array.
+ * @param hex Input hex string
+ * @param out Output byte array
+ * @param len Number of bytes to convert
+ */
+void hexToBytes(const char* hex, uint8_t* out, size_t len) {
+    for (size_t i = 0; i < len; i++) {
+        out[i] = (fromHex(hex[2*i]) << 4) | fromHex(hex[2*i+1]);
+    }
+}
+
+/**
+ * @brief Print a byte array as hex to Serial.
+ * @param d Data array
+ * @param l Length
+ */
+void printHex(const uint8_t* d, size_t l) {
+    for (size_t i = 0; i < l; i++) {
+        if (d[i] < 0x10) Serial.print('0');
+        Serial.print(d[i], HEX);
+    }
+    Serial.println();
+}
+
+/**
  * @brief Encodes the RLP list header for a sequence of items.
  *
  * This function generates the RLP "whole header" for a list payload of length total_len,

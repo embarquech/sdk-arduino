@@ -48,4 +48,26 @@ uint32_t ConvertNumberToUintArray(uint8_t *str, uint32_t val);
  */
 size_t trimLeadingZeros(uint8_t* out, const uint8_t* in, size_t in_len);
 
+/**
+ * @brief Convert a hexadecimal character to a byte value.
+ * @param c Hex character
+ * @return Binary value (0-15)
+ */
+uint8_t fromHex(char c);
+
+/**
+ * @brief Convert a hex string to a byte array.
+ * @param hex Input hex string
+ * @param out Output byte array
+ * @param len Number of bytes to convert
+ */
+void hexToBytes(const char* hex, uint8_t* out, size_t len);
+
+/**
+ * @brief Print a byte array as hex to Serial.
+ * @param d Data array
+ * @param l Length
+ */
+void printHex(const uint8_t* d, size_t l);
+
 #endif /* UTIL_H */

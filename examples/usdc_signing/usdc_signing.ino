@@ -37,6 +37,12 @@ ArduinoSerialAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_SS_PIN, &SPI);
 CryptnoxWallet wallet(nfc, serialAdapter);
 
+/** ERC-20 transfer(address,uint256) function selector: keccak256("transfer(address,uint256)")[0..3] */
+#define ERC20_TRANSFER_SEL_0  0xa9U
+#define ERC20_TRANSFER_SEL_1  0x05U
+#define ERC20_TRANSFER_SEL_2  0x9cU
+#define ERC20_TRANSFER_SEL_3  0xbbU
+
 #define ERC20_INDEX_OFFSET 64U
 
 /**
@@ -53,43 +59,6 @@ struct Tx2 {
     size_t dataLen;                 /**< Length of calldata */
     uint32_t chainId;               /**< Ethereum chain ID */
 };
-
-/**
- * @brief Convert a hexadecimal character to a byte value.
- * @param c Hex character
- * @return Binary value (0-15)
- */
-uint8_t fromHex(char c) {
-    if (c >= '0' && c <= '9') return c - '0';
-    if (c >= 'a' && c <= 'f') return c - 'a' + 10;
-    if (c >= 'A' && c <= 'F') return c - 'A' + 10;
-    return 0;
-}
-
-/**
- * @brief Convert a hex string to a byte array.
- * @param hex Input hex string
- * @param out Output byte array
- * @param len Number of bytes to convert
- */
-void hexToBytes(const char* hex, uint8_t* out, size_t len) {
-    for (size_t i = 0; i < len; i++) {
-        out[i] = (fromHex(hex[2*i]) << 4) | fromHex(hex[2*i+1]);
-    }
-}
-
-/**
- * @brief Print a byte array as hex to Serial.
- * @param d Data array
- * @param l Length
- */
-void printHex(const uint8_t* d, size_t l) {
-    for (size_t i = 0; i < l; i++) {
-        if (d[i] < 0x10) Serial.print('0');
-        Serial.print(d[i], HEX);
-    }
-    Serial.println();
-}
 
 /**
  * @brief Encode unsigned EIP-1559 transaction into RLP.
@@ -212,7 +181,10 @@ size_t rlpEncodeSignedTx(const Tx2& tx, const uint8_t* r, const uint8_t* s, cons
  * @return Calldata length (always 68)
  */
 size_t encodeERC20Transfer(uint8_t* out) {
-    out[0]=0xa9; out[1]=0x05; out[2]=0x9c; out[3]=0xbb; /* transfer() selector */
+    out[0] = ERC20_TRANSFER_SEL_0; /* transfer(address,uint256) selector byte 0 */
+    out[1] = ERC20_TRANSFER_SEL_1; /* transfer(address,uint256) selector byte 1 */
+    out[2] = ERC20_TRANSFER_SEL_2; /* transfer(address,uint256) selector byte 2 */
+    out[3] = ERC20_TRANSFER_SEL_3; /* transfer(address,uint256) selector byte 3 */
     memset(out+4, 0, 12);
     hexToBytes(ADDR_TO, out+16, 20);
     memset(out+36, 0, 28);
@@ -235,6 +207,7 @@ void sendRawTx(const uint8_t* raw, size_t len) {
     static const char kSfx[] = "\"]}";
     for (uint8_t attempt = 0; attempt < 3; attempt++) {
         if (attempt) delay(2000);
+        if (WiFi.status() != WL_CONNECTED) { continue; }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -308,6 +281,7 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         hexBuf[vOffset + 62] = hexChars[v >> 4];
         hexBuf[vOffset + 63] = hexChars[v & 0x0f];
 
+        if (WiFi.status() != WL_CONNECTED) { continue; }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -357,6 +331,7 @@ uint64_t fetchNonce() {
 
     for (uint8_t attempt = 0; attempt < 3; attempt++) {
         if (attempt) delay(1000);
+        if (WiFi.status() != WL_CONNECTED) { continue; }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -452,26 +427,6 @@ void setup() {
         signReq.hash       = hashKeccak;
         signReq.hashLength = CW_HASH_SIZE;
         memcpy(signReq.pin, CARD_PIN, CARD_PIN_LEN);
-
-    // ---- PRINT DERIVATION PATH ----
-    Serial.print(F("derivePathLength = "));
-    Serial.println(signReq.derivePathLength);
-
-    Serial.print(F("derivePath = "));
-    for (uint8_t i = 0; i < signReq.derivePathLength / sizeof(uint32_t); i++) {
-        Serial.print("0x");
-        Serial.print(signReq.derivePath[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
-
-    // ---- PRINT PIN ----
-    Serial.print(F("PIN = "));
-    for (uint8_t i = 0; i < CARD_PIN_LEN; i++) {
-        Serial.print(signReq.pin[i], HEX);
-        Serial.print(" ");
-    }
-    Serial.println();
 
         signResult = wallet.sign(signReq);
         wallet.disconnect(session);
