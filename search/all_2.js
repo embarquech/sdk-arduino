@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['gas_5flimit_5ferc20_0',['GAS_LIMIT_ERC20',['../config_8template_8h.html#acb66e21431c90911d0fdef95cf34261b',1,'config.template.h']]]
+  ['fromhex_0',['fromhex',['../util_8cpp.html#ad937688a82d1ad4c871b683399b68776',1,'fromHex(char c):&#160;util.cpp'],['../util_8h.html#ad937688a82d1ad4c871b683399b68776',1,'fromHex(char c):&#160;util.cpp']]]
 ];

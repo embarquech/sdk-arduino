@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['secure_5fcompare_0',['secure_compare',['../classCryptnoxUtils.html#a6082b4da85e238414dde264494e03022',1,'CryptnoxUtils']]],
-  ['secure_5fwipe_1',['secure_wipe',['../classCryptnoxUtils.html#ad93cfa6e8ddd66aa747b192ae0361263',1,'CryptnoxUtils']]]
+  ['keccak256_0',['keccak256',['../keccak256_8cpp.html#a87cdb4f920d99d36b7020b14cb4b31ce',1,'keccak256(const uint8_t *in, size_t inlen, uint8_t out[32]):&#160;keccak256.cpp'],['../keccak256_8h.html#a87cdb4f920d99d36b7020b14cb4b31ce',1,'keccak256(const uint8_t *in, size_t inlen, uint8_t out[32]):&#160;keccak256.cpp']]]
 ];

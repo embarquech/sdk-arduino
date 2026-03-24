@@ -1,5 +1,5 @@
 <map id="examples/usdc_signing/keccak256.cpp" name="examples/usdc_signing/keccak256.cpp">
-<area shape="rect" id="Node000001" title=" " alt="" coords="56,5,231,45"/>
+<area shape="rect" id="Node000001" title="Keccak&#45;256 (SHA3 variant) hash implementation for Ethereum." alt="" coords="56,5,231,45"/>
 <area shape="rect" id="Node000002" href="$keccak256_8h.html" title="Keccak&#45;256 (SHA3 variant) hash function for Ethereum." alt="" coords="37,93,140,119"/>
 <area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="132,47,107,84,102,80,128,44"/>
 <area shape="rect" id="Node000005" title=" " alt="" coords="164,93,235,119"/>

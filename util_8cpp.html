@@ -104,6 +104,15 @@ Include dependency graph for util.cpp:</div>
 </div><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
+<tr class="memitem:ad937688a82d1ad4c871b683399b68776" id="r_ad937688a82d1ad4c871b683399b68776"><td class="memItemLeft" align="right" valign="top">uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#ad937688a82d1ad4c871b683399b68776">fromHex</a> (char c)</td></tr>
+<tr class="memdesc:ad937688a82d1ad4c871b683399b68776"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convert a hexadecimal character to a byte value.  <br /></td></tr>
+<tr class="separator:ad937688a82d1ad4c871b683399b68776"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3b9af09b4618f736d75d923bfec71381" id="r_a3b9af09b4618f736d75d923bfec71381"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a3b9af09b4618f736d75d923bfec71381">hexToBytes</a> (const char *hex, uint8_t *out, size_t len)</td></tr>
+<tr class="memdesc:a3b9af09b4618f736d75d923bfec71381"><td class="mdescLeft">&#160;</td><td class="mdescRight">Convert a hex string to a byte array.  <br /></td></tr>
+<tr class="separator:a3b9af09b4618f736d75d923bfec71381"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a015feaffee528e930f9281782e6f9515" id="r_a015feaffee528e930f9281782e6f9515"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#a015feaffee528e930f9281782e6f9515">printHex</a> (const uint8_t *d, size_t l)</td></tr>
+<tr class="memdesc:a015feaffee528e930f9281782e6f9515"><td class="mdescLeft">&#160;</td><td class="mdescRight">Print a byte array as hex to Serial.  <br /></td></tr>
+<tr class="separator:a015feaffee528e930f9281782e6f9515"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa15ca785a09ef0f0ef72092622704703" id="r_aa15ca785a09ef0f0ef72092622704703"><td class="memItemLeft" align="right" valign="top">uint32_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="util_8cpp.html#aa15ca785a09ef0f0ef72092622704703">RlpEncodeWholeHeader</a> (uint8_t *header_output, uint32_t total_len)</td></tr>
 <tr class="memdesc:aa15ca785a09ef0f0ef72092622704703"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encodes the RLP list header for a sequence of items.  <br /></td></tr>
 <tr class="separator:aa15ca785a09ef0f0ef72092622704703"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -154,6 +163,114 @@ Functions</h2></td></tr>
   </dd>
 </dl>
 <dl class="section return"><dt>Returns</dt><dd>Number of bytes written to the buffer. </dd></dl>
+
+</div>
+</div>
+<a id="ad937688a82d1ad4c871b683399b68776" name="ad937688a82d1ad4c871b683399b68776"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad937688a82d1ad4c871b683399b68776">&#9670;&#160;</a></span>fromHex()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">uint8_t fromHex </td>
+          <td>(</td>
+          <td class="paramtype">char&#160;</td>
+          <td class="paramname"><em>c</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Convert a hexadecimal character to a byte value. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">c</td><td>Hex character </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>Binary value (0-15) </dd></dl>
+
+</div>
+</div>
+<a id="a3b9af09b4618f736d75d923bfec71381" name="a3b9af09b4618f736d75d923bfec71381"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3b9af09b4618f736d75d923bfec71381">&#9670;&#160;</a></span>hexToBytes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void hexToBytes </td>
+          <td>(</td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>hex</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">uint8_t *&#160;</td>
+          <td class="paramname"><em>out</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>len</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Convert a hex string to a byte array. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">hex</td><td>Input hex string </td></tr>
+    <tr><td class="paramname">out</td><td>Output byte array </td></tr>
+    <tr><td class="paramname">len</td><td>Number of bytes to convert </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a015feaffee528e930f9281782e6f9515" name="a015feaffee528e930f9281782e6f9515"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a015feaffee528e930f9281782e6f9515">&#9670;&#160;</a></span>printHex()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void printHex </td>
+          <td>(</td>
+          <td class="paramtype">const uint8_t *&#160;</td>
+          <td class="paramname"><em>d</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">size_t&#160;</td>
+          <td class="paramname"><em>l</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Print a byte array as hex to Serial. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">d</td><td>Data array </td></tr>
+    <tr><td class="paramname">l</td><td>Length </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

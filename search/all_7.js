@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['secure_5fcompare_0',['secure_compare',['../classCryptnoxUtils.html#a6082b4da85e238414dde264494e03022',1,'CryptnoxUtils']]],
-  ['secure_5fwipe_1',['secure_wipe',['../classCryptnoxUtils.html#ad93cfa6e8ddd66aa747b192ae0361263',1,'CryptnoxUtils']]]
+  ['max_5ffee_0',['MAX_FEE',['../config_8template_8h.html#aa1422128431177dfd9fc34cc1694671c',1,'config.template.h']]],
+  ['max_5fpriority_5ffee_1',['MAX_PRIORITY_FEE',['../config_8template_8h.html#ad82bc6ec114eb1c53a0039c04111fc0e',1,'config.template.h']]]
 ];

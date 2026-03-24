@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['trimleadingzeros_0',['trimleadingzeros',['../util_8cpp.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp'],['../util_8h.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp']]],
-  ['trng_5fbyte_1',['trng_byte',['../classCryptnoxUtils.html#aa698edecdb492bac3b990cd65387c08e',1,'CryptnoxUtils']]]
+  ['printhex_0',['printhex',['../util_8cpp.html#a015feaffee528e930f9281782e6f9515',1,'printHex(const uint8_t *d, size_t l):&#160;util.cpp'],['../util_8h.html#a015feaffee528e930f9281782e6f9515',1,'printHex(const uint8_t *d, size_t l):&#160;util.cpp']]]
 ];
