@@ -45,6 +45,9 @@ CryptnoxWallet wallet(nfc, serialAdapter);
 
 #define ERC20_INDEX_OFFSET 64U
 
+/** @brief Sentinel returned by determineYParity() when recovery fails. */
+#define YPARITY_UNKNOWN 0xFFU
+
 /**
  * @brief Ethereum EIP-1559 transaction structure.
  */
@@ -101,7 +104,7 @@ size_t rlpEncodeUnsignedTx(const Tx2 &tx, uint8_t *out) {
     uint8_t header[8];
     size_t header_len = RlpEncodeWholeHeader(header, off);
 
-    size_t out_off = 0;
+    size_t out_off = 0U;
     out[out_off++] = 0x02; /* EIP-1559 type prefix */
     memcpy(out + out_off, header, header_len);
     out_off += header_len;
@@ -155,17 +158,17 @@ size_t rlpEncodeSignedTx(const Tx2& tx, const uint8_t* r, const uint8_t* s, cons
     off += RlpEncodeItem(buf + off, v, 1U);
 
     uint8_t tmp_r[32];
-    tmp_len = trimLeadingZeros(tmp_r, r, 32);
+    tmp_len = trimLeadingZeros(tmp_r, r, 32U);
     off += RlpEncodeItem(buf + off, tmp_r, tmp_len);
 
     uint8_t tmp_s[32];
-    tmp_len = trimLeadingZeros(tmp_s, s, 32);
+    tmp_len = trimLeadingZeros(tmp_s, s, 32U);
     off += RlpEncodeItem(buf + off, tmp_s, tmp_len);
 
     uint8_t header[8];
     size_t header_len = RlpEncodeWholeHeader(header, off);
 
-    size_t out_off = 0;
+    size_t out_off = 0U;
     out[out_off++] = 0x02;
     memcpy(out + out_off, header, header_len);
     out_off += header_len;
@@ -185,9 +188,9 @@ size_t encodeERC20Transfer(uint8_t* out) {
     out[1] = ERC20_TRANSFER_SEL_1; /* transfer(address,uint256) selector byte 1 */
     out[2] = ERC20_TRANSFER_SEL_2; /* transfer(address,uint256) selector byte 2 */
     out[3] = ERC20_TRANSFER_SEL_3; /* transfer(address,uint256) selector byte 3 */
-    memset(out+4, 0, 12);
-    hexToBytes(ADDR_TO, out+16, 20);
-    memset(out+36, 0, 28);
+    memset(out+4,  0, 12); /* bytes  4-15: ABI word padding before address (12 zero bytes) */
+    hexToBytes(ADDR_TO, out+16, 20); /* bytes 16-35: recipient address (20 bytes)           */
+    memset(out+36, 0, 28); /* bytes 36-63: ABI word padding before amount  (28 zero bytes) */
     out[ERC20_INDEX_OFFSET]   = (AMOUNT_USDC >> 24) & 0xFF;
     out[ERC20_INDEX_OFFSET+1] = (AMOUNT_USDC >> 16) & 0xFF;
     out[ERC20_INDEX_OFFSET+2] = (AMOUNT_USDC >> 8)  & 0xFF;
@@ -217,17 +220,21 @@ void sendRawTx(const uint8_t* raw, size_t len) {
             (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
         client.beginBody();
         client.print(kPfx);
-        char b[3]; b[2] = '\0';
+        char b[3]; b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
         for (size_t i = 0; i < len; i++) {
-            b[0] = hexC[raw[i] >> 4];
-            b[1] = hexC[raw[i] & 0x0f];
+            b[0] = hexC[raw[i] >> 4];  /* high nibble */
+            b[1] = hexC[raw[i] & 0x0f]; /* low nibble */
             client.print(b);
         }
         client.print(kSfx);
         client.endRequest();
         int status = client.responseStatusCode();
         Serial.print(F("Status:")); Serial.println(status);
-        if (status > 0) { Serial.println(client.responseBody()); client.stop(); return; }
+        if (status > 0) {
+            Serial.println(client.responseBody());
+            client.stop();
+            return;
+        }
         client.stop();
     }
 }
@@ -241,28 +248,28 @@ void sendRawTx(const uint8_t* raw, size_t len) {
  * @param hash    Keccak-256 transaction hash (32 bytes).
  * @param r       Signature r component (32 bytes).
  * @param s       Signature s component (32 bytes).
- * @return 0 or 1 on success, 0xFF on failure.
+ * @return 0 or 1 on success, YPARITY_UNKNOWN on failure.
  */
 uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s) {
     static const char hexChars[] = "0123456789abcdef";
     /* ecrecover calldata: "0x" + hash(64) + v(64) + r(64) + s(64) = 258 chars + NUL */
     char hexBuf[260];
-    int pos = 0;
+    uint8_t pos = 0U;
     hexBuf[pos++] = '0';
     hexBuf[pos++] = 'x';
-    for (int i = 0; i < 32; i++) {
+    for (uint8_t i = 0U; i < 32U; i++) {
         hexBuf[pos++] = hexChars[hash[i] >> 4];
         hexBuf[pos++] = hexChars[hash[i] & 0x0f];
     }
     /* v field: 31 zero bytes (62 '0' chars) then 1 value byte — filled per iteration */
-    const int vOffset = pos;
-    for (int i = 0; i < 62; i++) hexBuf[pos++] = '0';
-    pos += 2; /* placeholder for v byte */
-    for (int i = 0; i < 32; i++) {
+    const uint8_t vOffset = pos;
+    for (uint8_t i = 0U; i < 62U; i++) hexBuf[pos++] = '0';
+    pos += 2U; /* placeholder for v byte */
+    for (uint8_t i = 0U; i < 32U; i++) {
         hexBuf[pos++] = hexChars[r[i] >> 4];
         hexBuf[pos++] = hexChars[r[i] & 0x0f];
     }
-    for (int i = 0; i < 32; i++) {
+    for (uint8_t i = 0U; i < 32U; i++) {
         hexBuf[pos++] = hexChars[s[i] >> 4];
         hexBuf[pos++] = hexChars[s[i] & 0x0f];
     }
@@ -275,7 +282,8 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     static const char kSuffix[] = "\"},\"latest\"]}";
     const int bodyLen = (int)(sizeof(kPrefix) - 1) + 258 + (int)(sizeof(kSuffix) - 1);
 
-    for (uint8_t yp = 0U; yp <= 1U; yp++) {
+    uint8_t result = YPARITY_UNKNOWN;
+    for (uint8_t yp = 0U; (yp <= 1U) && (result == YPARITY_UNKNOWN); yp++) {
         /* Patch v byte (27 or 28) into last two chars of the v field */
         const uint8_t v = 27U + yp;
         hexBuf[vOffset + 62] = hexChars[v >> 4];
@@ -301,21 +309,24 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
             continue;
         }
         String response = client.responseBody();
+        client.stop();
         int resultIdx = response.indexOf("\"result\"");
-        if (resultIdx < 0) { continue; }
+        if (resultIdx < 0) {
+            continue;
+        }
         int hexIdx = response.indexOf("0x", resultIdx);
-        if (hexIdx < 0) { continue; }
+        if (hexIdx < 0) {
+            continue;
+        }
         /* ecrecover returns 32-byte word; address = last 20 bytes = last 40 hex chars */
         String recovered = response.substring(hexIdx + 26, hexIdx + 66);
         Serial.print(F("got:")); Serial.println(recovered);
         Serial.print(F("exp:")); Serial.println(ADDR_FROM);
         if (recovered.equalsIgnoreCase(ADDR_FROM)) {
-            client.stop();
-            return yp;
+            result = yp;
         }
-        client.stop();
     }
-    return 0xFFU; /* could not determine */
+    return result;
 }
 
 /**
@@ -446,7 +457,7 @@ void setup() {
 
     /* Determine yParity */
     uint8_t yParity = determineYParity(hashKeccak, r, s);
-    if (yParity == 0xFFU) {
+    if (yParity == YPARITY_UNKNOWN) {
         Serial.println(F("yParity determination failed! Halting."));
         while(1);
     }

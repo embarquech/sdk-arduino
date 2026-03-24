@@ -1,15 +1,15 @@
 {
-  "name": "CryptnoxSDK",
+  "name": "CryptnoxHW",
   "version": "1.0.0",
-  "description": "Arduino library for Cryptnox Smart Card wallets. Hardware-agnostic API to connect to Cryptnox cards over NFC (PN532), establish secure channels, verify PINs, and sign hashes.",
+  "description": "Hardware-independent API to communicate with Cryptnox hardware wallets. Supports NFC (PN532) transport, secure channels, PIN verification, signing hashes, and user data management.",
   "keywords": "cryptnox, nfc, smartcard, wallet, ethereum, pn532, secure-channel",
   "authors": {
     "name": "Cryptnox",
-    "url": "https://github.com/embarquech/cryptnox-sdk-arduino"
+    "url": "https://github.com/cryptnox/cryptnox-sdk-arduino"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/embarquech/cryptnox-sdk-arduino.git"
+    "url": "https://github.com/cryptnox/cryptnox-sdk-arduino.git"
   },
   "license": "See COMMERCIAL.md",
   "frameworks": "arduino",
@@ -18,6 +18,7 @@
     { "name": "micro-ecc" },
     { "name": "Adafruit PN532" },
     { "name": "AESLib" },
-    { "name": "Crypto" }
+    { "name": "Crypto" },
+    { "name": "trng" }
   ]
 }

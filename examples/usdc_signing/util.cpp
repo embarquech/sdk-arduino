@@ -67,21 +67,21 @@ void printHex(const uint8_t* d, size_t l) {
 // cppcheck-suppress unusedFunction
 uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
 {
-    if (total_len < 55)
+    if (total_len < 55U)
     {
         header_output[0] = (uint8_t)0xc0 + (uint8_t)total_len;
-        return 1;
+        return 1U;
     }
     else
     {
         uint8_t tmp_header[8];
-        memset(tmp_header, 0, 8);
-        uint32_t hexdigit = 1;
+        memset(tmp_header, 0, 8U);
+        uint32_t hexdigit = 1U;
         uint32_t tmp = total_len;
-        while ((uint32_t)(tmp / 256) > 0)
+        while ((uint32_t)(tmp / 256U) > 0U)
         {
-            tmp_header[hexdigit] = (uint8_t)(tmp % 256);
-            tmp = (uint32_t)(tmp / 256);
+            tmp_header[hexdigit] = (uint8_t)(tmp % 256U);
+            tmp = (uint32_t)(tmp / 256U);
             hexdigit++;
         }
         tmp_header[hexdigit] = (uint8_t)(tmp);
@@ -89,14 +89,14 @@ uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
 
         // fix direction for header
         uint8_t header[8];
-        memset(header, 0, 8);
+        memset(header, 0, 8U);
         header[0] = tmp_header[0];
         for (int i = 0; i < hexdigit; i++)
         {
             header[i + 1] = tmp_header[hexdigit - i];
         }
-        memcpy(header_output, header, (size_t)hexdigit + 1);
-        return hexdigit + 1;
+        memcpy(header_output, header, (size_t)hexdigit + 1U);
+        return hexdigit + 1U;
     }
 }
 
@@ -111,35 +111,35 @@ uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
 // cppcheck-suppress unusedFunction
 uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len)
 {
-    if (input_len == 1 && input[0] == 0x00)
+    if (input_len == 1U && input[0] == 0x00U)
     {
         const uint8_t c[1] = {0x80};
-        memcpy(output, c, 1);
-        return 1;
+        memcpy(output, c, 1U);
+        return 1U;
     }
-    else if (input_len == 1 && input[0] < 128)
+    else if (input_len == 1U && input[0] < 128U)
     {
-        memcpy(output, input, 1);
-        return 1;
+        memcpy(output, input, 1U);
+        return 1U;
     }
-    else if (input_len <= 55)
+    else if (input_len <= 55U)
     {
         const uint8_t _ = (uint8_t)0x80 + (uint8_t)input_len;
         const uint8_t header[] = {_};
-        memcpy(output, header, 1);
-        memcpy(output + 1, input, (size_t)input_len);
-        return input_len + 1;
+        memcpy(output, header, 1U);
+        memcpy(output + 1U, input, (size_t)input_len);
+        return input_len + 1U;
     }
     else
     {
         uint8_t tmp_header[8];
-        memset(tmp_header, 0, 8);
-        uint32_t hexdigit = 1;
+        memset(tmp_header, 0, 8U);
+        uint32_t hexdigit = 1U;
         uint32_t tmp = input_len;
-        while ((uint32_t)(tmp / 256) > 0)
+        while ((uint32_t)(tmp / 256U) > 0U)
         {
-            tmp_header[hexdigit] = (uint8_t)(tmp % 256);
-            tmp = (uint32_t)(tmp / 256);
+            tmp_header[hexdigit] = (uint8_t)(tmp % 256U);
+            tmp = (uint32_t)(tmp / 256U);
             hexdigit++;
         }
         tmp_header[hexdigit] = (uint8_t)(tmp);
@@ -147,15 +147,15 @@ uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len
 
         // fix direction for header
         uint8_t header[8];
-        memset(header, 0, 8);
+        memset(header, 0, 8U);
         header[0] = tmp_header[0];
         for (int i = 0; i < hexdigit; i++)
         {
             header[i + 1] = tmp_header[hexdigit - i];
         }
-        memcpy(output, header, hexdigit + 1);
-        memcpy(output + hexdigit + 1, input, (size_t)input_len);
-        return input_len + hexdigit + 1;
+        memcpy(output, header, hexdigit + 1U);
+        memcpy(output + hexdigit + 1U, input, (size_t)input_len);
+        return input_len + hexdigit + 1U;
     }
 }
 
@@ -169,14 +169,14 @@ uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len
 // cppcheck-suppress unusedFunction
 uint32_t ConvertNumberToUintArray(uint8_t* str, uint32_t val)
 {
-    uint32_t ret = 0;
+    uint32_t ret = 0U;
     uint8_t tmp[8];
-    memset(tmp, 0, 8);
+    memset(tmp, 0, 8U);
 
-    while ((uint32_t)(val / 256) > 0)
+    while ((uint32_t)(val / 256U) > 0U)
     {
-        tmp[ret] = (uint8_t)(val % 256);
-        val = (uint32_t)(val / 256);
+        tmp[ret] = (uint8_t)(val % 256U);
+        val = (uint32_t)(val / 256U);
         ret++;
     }
     tmp[ret] = (uint8_t)(val % 256);
