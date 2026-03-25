@@ -9,7 +9,6 @@ bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t le
     return diff == 0U;
 }
 
-// cppcheck-suppress unusedFunction
 void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
     volatile uint8_t* p = buf;
     for (size_t i = 0U; i < len; i++) {

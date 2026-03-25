@@ -428,6 +428,7 @@ private:
     bool sendSignApdu(CW_SignRequest& request, const uint8_t* data, uint16_t dataLength,
                       uint8_t* derResponse, uint16_t& derLength, CW_SignResult& result);
     bool extractRawSignature(const uint8_t* derResponse, uint16_t derLength, CW_SignResult& result);
+    // cppcheck-suppress unusedPrivateFunction
     void debugPrintSignature(const uint8_t* signature);
 
 };

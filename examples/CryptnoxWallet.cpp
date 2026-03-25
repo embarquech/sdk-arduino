@@ -263,6 +263,7 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
         };
 
         /* Generate 8 random bytes */
+        // cppcheck-suppress misra-config
         if (CryptnoxUtils::uECC_rng_callback(randomBytes, RANDOM_BYTES) != 1) {
             serial.println(F("Error: unable to generate random nonce."));
             return false;
@@ -1021,6 +1022,7 @@ bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t de
  *
  * @param[in] signature  Pointer to CW_RAW_SIGNATURE_SIZE bytes.
  */
+// cppcheck-suppress unusedFunction
 void CryptnoxWallet::debugPrintSignature(const uint8_t* signature)
 {
     serial.print(F("Signature ("));
