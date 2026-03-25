@@ -1,5 +1,5 @@
 #include "CryptnoxUtils.h"
-#include <TRNG.h>
+#include <trng.h>
 
 bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
     uint8_t diff = 0U;
@@ -26,7 +26,7 @@ uint8_t CryptnoxUtils::trng_byte() {
         initialized = true;
     }
     if (rngPos >= 4U) {
-        TRNG.random(rngBuf);
+        TRNG.random32(&rngBuf);
         rngPos = 0U;
     }
     const uint8_t b = (uint8_t)((rngBuf >> (rngPos * 8U)) & 0xFFU);
