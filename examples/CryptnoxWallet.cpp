@@ -28,6 +28,7 @@
 #define ENC_BUF_MAX_LEN                            (INPUT_BUFFER_LIMIT + AES_BLOCK_SIZE)
 #define MAX_MAC_DATA_LEN                           (APDU_HEADER_LEN + MAC_APDU_LEN + ENC_BUF_MAX_LEN)
 #define SEND_APDU_MAX_LEN                          (APDU_HEADER_LEN + APDU_LC_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN)
+#define CW_ENABLE_SENSITIVE_LOGS                   (0U)
 
 /* Enforce that CW_USER_DATA_PAGE_SIZE fits within a single PN532 APDU (255 bytes max):
  * APDU_HEADER_LEN(4) + Lc(1) + MAC(AES_BLOCK_SIZE) + encrypted(ENC_BUF_MAX_LEN) <= 255 */
@@ -119,7 +120,7 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
         /* Get certificate and establish secure channel */
         if (getCardCertificate(cardCertificate, cardCertificateLength)) {
             uint8_t cardEphemeralPubKey[CARDEPHEMERALPUBKEY_SIZE];
-            if (extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey)) {
+            if (extractCardEphemeralKey(cardCertificate, cardCertificateLength, cardEphemeralPubKey)) {
                 uint8_t openSecureChannelSalt[OPENSECURECHANNEL_SALT_IN_BYTES];
                 uint8_t clientPrivateKey[CLIENT_PRIVATE_KEY_SIZE];
                 uint8_t clientPublicKey[CLIENT_PUBLIC_KEY_SIZE];
@@ -262,7 +263,10 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
         };
 
         /* Generate 8 random bytes */
-        CryptnoxUtils::uECC_rng_callback(randomBytes, RANDOM_BYTES);
+        if (CryptnoxUtils::uECC_rng_callback(randomBytes, RANDOM_BYTES) != 1) {
+            serial.println(F("Error: unable to generate random nonce."));
+            return false;
+        }
 
         /* Final APDU = header + 8 random bytes */
         uint8_t fullApdu[sizeof(getCardCertificateApdu) + RANDOM_BYTES];
@@ -291,6 +295,8 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
         } else {
             serial.println(F("APDU getCardCertificate failed."));
         }
+
+        CryptnoxUtils::secure_wipe(randomBytes, sizeof(randomBytes));
     }
     
     return ret;
@@ -459,9 +465,12 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         aesLib.set_paddingmode(paddingMode::Null);
         uint16_t encryptedLengthMAC = aesLib.encrypt(reinterpret_cast<byte*>(MAC_data), MAC_data_length, ciphertextMACLong, session.macKey, sizeof(session.macKey), mac_iv);
 
+        if (encryptedLengthMAC < AES_BLOCK_SIZE) {
+            return false;
+        }
         uint8_t MAC_value[AES_BLOCK_SIZE] = { 0U };
         /* In AES CBC-MAC last block is MAC */
-        uint8_t macOffset = encryptedLengthMAC - AES_BLOCK_SIZE;
+        uint16_t macOffset = encryptedLengthMAC - AES_BLOCK_SIZE;
         memcpy(MAC_value, ciphertextMACLong + macOffset, AES_BLOCK_SIZE);
 
         /* Forge APDU: OPC HEADER || MAC_value || ciphertextOPC
@@ -496,13 +505,13 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
             serial.println(F("APDU exchange failed."));
         }
 
-        /* Secure cleanup */
-        memset(sharedSecret, 0U, sizeof(sharedSecret));
-        memset(sha512Output, 0U, sizeof(sha512Output));
-        memset(concat, 0U, sizeof(concat));
-        memset(RNG_data, 0U, sizeof(RNG_data));
-        memset(ciphertextOPC, 0U, sizeof(ciphertextOPC));
-        memset(MAC_data, 0U, sizeof(MAC_data));
+        /* Secure cleanup — use volatile writes so the compiler cannot elide these zeroes */
+        CryptnoxUtils::secure_wipe(sharedSecret,  sizeof(sharedSecret));
+        CryptnoxUtils::secure_wipe(sha512Output,  sizeof(sha512Output));
+        CryptnoxUtils::secure_wipe(concat,        sizeof(concat));
+        CryptnoxUtils::secure_wipe(RNG_data,      sizeof(RNG_data));
+        CryptnoxUtils::secure_wipe(ciphertextOPC, sizeof(ciphertextOPC));
+        CryptnoxUtils::secure_wipe(MAC_data,      sizeof(MAC_data));
     }
 
     return ret;
@@ -587,18 +596,32 @@ bool CryptnoxWallet::checkStatusWord(const uint8_t* response, uint8_t responseLe
  * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
  *                                    Can be nullptr if not needed.
  */
-bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65) {
+bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t cardCertificateLength,
+                                             uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65) {
     bool ret = false;
 
-    serial.print(F("Full Ephemeral Public Key (65 bytes):"));
-    serial.println();
     if ((cardCertificate == NULL) || (cardEphemeralPubKey == NULL)) {
         ret = false;
     }
     else {
         const uint8_t keyStart = 1U + 8U; /* skip 'C' and nonce */
         const uint8_t fullKeyLength = 65U; /* includes 0x04 prefix */
+        const uint8_t minCertLen = keyStart + fullKeyLength; /* Need at least up to offset 73 */
         uint8_t i;
+
+        if (cardCertificateLength < minCertLen) {
+            serial.println(F("Error: certificate too short."));
+            return false;
+        }
+        if (cardCertificate[keyStart] != 0x04U) {
+            serial.println(F("Error: invalid EC public key prefix in certificate."));
+            return false;
+        }
+
+#if CW_ENABLE_SENSITIVE_LOGS
+        serial.print(F("Full Ephemeral Public Key (65 bytes):"));
+        serial.println();
+#endif
 
         for (i = 0U; i < fullKeyLength; i++) {
             uint8_t b = cardCertificate[keyStart + i];
@@ -614,6 +637,7 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
             }
 
             /* Print hex to Serial for debugging */
+#if CW_ENABLE_SENSITIVE_LOGS
             serial.print("0x");
             if (b < 0x10U) {
                 serial.print('0');
@@ -623,9 +647,12 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
 
             /* Wrap line every 16 bytes */
             if ((i + 1U) % 16 == 0 && (i + 1U) != fullKeyLength) serial.println();
+#endif
         }
 
+#if CW_ENABLE_SENSITIVE_LOGS
         serial.println();
+#endif
         ret = true;  /* Success */
     }
 
@@ -658,6 +685,7 @@ void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, ui
         memcpy(paddedPin, pin, pinLength);
         uint8_t apdu[] = {0x80, 0x20, 0x00, 0x00};
         aes_cbc_encrypt(session, apdu, sizeof(apdu), paddedPin, CW_MAX_PIN_LENGTH);
+        CryptnoxUtils::secure_wipe(paddedPin, sizeof(paddedPin));
     }
 }
 
@@ -775,7 +803,9 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
 
         if (sendSignApdu(request, data, dataLength, derResponse, derLength, result)) {
             if (extractRawSignature(derResponse, derLength, result)) {
+#if CW_ENABLE_SENSITIVE_LOGS
                 debugPrintSignature(result.signature);
+#endif
                 result.errorCode = CW_OK;
             }
         }
@@ -1111,6 +1141,10 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     uint16_t encryptedLength = aesLib.encrypt(reinterpret_cast<const byte*>(data), dataLength, s_dataBuf, session.aesKey, sizeof(session.aesKey), session.iv);
 
     uint16_t lcValue = encryptedLength + (uint16_t)AES_BLOCK_SIZE;
+    if (lcValue > 0xFFU) {
+        serial.println(F("Error: APDU Lc overflow."));
+        return false;
+    }
     uint8_t macApdu[MAC_APDU_LEN] = {0U};
     macApdu[0U] = (uint8_t)lcValue;
     uint16_t macDataLength = apduLength + sizeof(macApdu) + encryptedLength;
@@ -1131,6 +1165,10 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     /* s_apduBuf used first as macEncryptedData output */
     uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(s_macBuf), macDataLength, s_apduBuf, session.macKey, sizeof(session.macKey), macIv);
 
+    if (macEncryptedLength < AES_BLOCK_SIZE) {
+        serial.println(F("Error: MAC encryption output too short."));
+        return false;
+    }
     uint8_t macValue[AES_BLOCK_SIZE] = { 0U };
     /* In AES CBC-MAC last block is MAC */
     uint16_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
@@ -1152,12 +1190,14 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
     offset += sizeof(macValue);
     memcpy(s_apduBuf + offset, s_dataBuf, encryptedLength);
 
+#if CW_ENABLE_SENSITIVE_LOGS
     serial.println("Apdu: ");
     for (uint16_t i = 0U; i < sendApduLength; i++) {
         serial.print(s_apduBuf[i], HEX);
         serial.print(" ");
     }
     serial.println();
+#endif
 
     /* Send APDU */
     uint8_t response[255U] = { 0U };
@@ -1166,15 +1206,14 @@ bool CryptnoxWallet::aes_cbc_encrypt(CW_SecureSession& session, const uint8_t ap
         if (checkStatusWord(response, responseLength, 0x90, 0x00)) {
             serial.println(F("Secured APDU success."));
 
-            /* Rolling IVs: It is the last MAC, ie the first AES_BLOCK_SIZE bytes from the last answer */
-            memcpy(session.iv, response, CW_IV_SIZE);
-
+#if CW_ENABLE_SENSITIVE_LOGS
             serial.println(F("macValue: "));
             for (uint8_t i = 0U; i < AES_BLOCK_SIZE; i++) {
                 serial.print(macValue[i], HEX);
                 serial.print(F(" "));
             }
             serial.println();
+#endif
 
             /* Decode response and optionally pass decrypted data to caller */
             ret = aes_cbc_decrypt(session, response, responseLength, macValue,
@@ -1206,7 +1245,13 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
                                       uint8_t* mac_value,
                                       uint8_t* decryptedOutput, uint16_t* decryptedOutputLength) {
 
-    /* Response layout: MAC(16) || cipherText(N) || SW1(1) || SW2(1) */
+    /* Response layout: MAC(16) || cipherText(N) || SW1(1) || SW2(1)
+     * Minimum valid response: 16 (MAC) + 2 (SW) = 18 bytes */
+    if (response_len < (AES_BLOCK_SIZE + 2U)) {
+        serial.println(F("Error: Response too short for MAC+SW."));
+        return false;
+    }
+
     uint8_t rep_mac[AES_BLOCK_SIZE];
     memcpy(rep_mac, response, AES_BLOCK_SIZE);
     uint8_t *rep_data = response + AES_BLOCK_SIZE;
@@ -1243,6 +1288,10 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     aesLib.set_paddingmode(paddingMode::Null);
     uint16_t macEncryptedLength = aesLib.encrypt(reinterpret_cast<byte*>(s_macBuf), macInputLen, s_apduBuf, session.macKey, sizeof(session.macKey), mac_iv);
 
+    if (macEncryptedLength < AES_BLOCK_SIZE) {
+        serial.println(F("Error: MAC recomputation output too short."));
+        return false;
+    }
     uint8_t recomputedMacValue[AES_BLOCK_SIZE] = { 0U };
     /* In AES CBC-MAC the last block is the MAC */
     uint16_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
@@ -1252,6 +1301,8 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
     // cppcheck-suppress misra-config
     if (CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         serial.println(F("MACs match"));
+        /* Update rolling IV only after MAC is verified — prevents session corruption on forgery */
+        memcpy(session.iv, rep_mac, CW_IV_SIZE);
     } else {
         serial.println(F("MAC mismatch"));
         return false;
@@ -1276,12 +1327,14 @@ bool CryptnoxWallet::aes_cbc_decrypt(CW_SecureSession& session, uint8_t *respons
         serial.println(F("Error: Decoded data length exceeds buffer."));
     }
     else {
+#if CW_ENABLE_SENSITIVE_LOGS
         serial.println(F("Decoded data: "));
         for (uint16_t i = 0U; i < decryptedDataLength; i++) {
             serial.print(s_dataBuf[i], HEX);
             serial.print(F(" "));
         }
         serial.println();
+#endif
 
         uint8_t innerSW1 = s_dataBuf[decryptedDataLength - 2U];
         uint8_t innerSW2 = s_dataBuf[decryptedDataLength - 1U];

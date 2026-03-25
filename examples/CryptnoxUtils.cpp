@@ -1,4 +1,5 @@
 #include "CryptnoxUtils.h"
+#include <TRNG.h>
 
 bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
     uint8_t diff = 0U;
@@ -17,12 +18,21 @@ void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
 }
 
 uint8_t CryptnoxUtils::trng_byte() {
-    static bool seeded = false;
-    if (seeded == false) {
-        randomSeed(analogRead(0U));
-        seeded = true;
+    static bool     initialized = false;
+    static uint32_t rngBuf      = 0U;
+    static uint8_t  rngPos      = 4U; /* 4 => force refill on first call */
+
+    if (!initialized) {
+        TRNG.begin();
+        initialized = true;
     }
-    return (uint8_t)random(0U, 256U);
+    if (rngPos >= 4U) {
+        TRNG.random(rngBuf);
+        rngPos = 0U;
+    }
+    const uint8_t b = (uint8_t)((rngBuf >> (rngPos * 8U)) & 0xFFU);
+    rngPos++;
+    return b;
 }
 
 int CryptnoxUtils::uECC_rng_callback(uint8_t* dest, unsigned size) {

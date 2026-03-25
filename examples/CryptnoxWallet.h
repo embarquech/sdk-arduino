@@ -88,9 +88,9 @@ struct CW_SecureSession {
 
     /** @brief Securely clear all session keys and IV. */
     void clear() {
-        memset(aesKey, 0U, sizeof(aesKey));
-        memset(macKey, 0U, sizeof(macKey));
-        memset(iv, 0U, sizeof(iv));
+        CryptnoxUtils::secure_wipe(aesKey, sizeof(aesKey));
+        CryptnoxUtils::secure_wipe(macKey, sizeof(macKey));
+        CryptnoxUtils::secure_wipe(iv, sizeof(iv));
     }
 };
 
@@ -354,7 +354,8 @@ private:
      * @param[out] fullEphemeralPubKey65  Optional buffer to store **65 bytes** including the 0x04 prefix.
      *                                    Can be nullptr if not needed.
      */
-     bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = NULL);
+     bool extractCardEphemeralKey(const uint8_t* cardCertificate, uint8_t cardCertificateLength,
+                                  uint8_t* cardEphemeralPubKey, uint8_t* fullEphemeralPubKey65 = NULL);
  
      /**
      * @brief Print an APDU in hex format with optional label.

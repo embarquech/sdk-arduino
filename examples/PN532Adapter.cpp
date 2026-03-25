@@ -78,6 +78,9 @@ PN532Adapter::~PN532Adapter() {
  * @return false otherwise.
  */
 bool PN532Adapter::begin() {
+    if (nfc == NULL) {
+        return false;
+    }
     nfc->begin();
     return nfc->getFirmwareVersion() != 0;
 }
@@ -94,6 +97,9 @@ bool PN532Adapter::begin() {
  */
 bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
                             uint8_t* response, uint8_t &responseLength) {
+    if ((nfc == NULL) || (serial == NULL) || (apdu == NULL) || (response == NULL)) {
+        return false;
+    }
     bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), apduLength, response, &responseLength);
 
     if (!success) {
@@ -124,6 +130,9 @@ bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
  * @return false otherwise.
  */
 bool PN532Adapter::inListPassiveTarget() {
+    if (nfc == NULL) {
+        return false;
+    }
     return nfc->inListPassiveTarget();
 }
 
@@ -131,6 +140,9 @@ bool PN532Adapter::inListPassiveTarget() {
  * @brief Reset the PN532 reader and configure it.
  */
 void PN532Adapter::resetReader() {
+    if (nfc == NULL) {
+        return;
+    }
     nfc->SAMConfig();
 }
 
@@ -141,6 +153,9 @@ void PN532Adapter::resetReader() {
  * @return false if the PN532 module was not detected.
  */
 bool PN532Adapter::printFirmwareVersion() {
+    if ((nfc == NULL) || (serial == NULL)) {
+        return false;
+    }
 
     uint32_t versionData = nfc->getFirmwareVersion();
     bool result = false;
