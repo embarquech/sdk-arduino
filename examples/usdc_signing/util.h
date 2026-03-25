@@ -63,11 +63,4 @@ uint8_t fromHex(char c);
  */
 void hexToBytes(const char* hex, uint8_t* out, size_t len);
 
-/**
- * @brief Print a byte array as hex to Serial.
- * @param d Data array
- * @param l Length
- */
-void printHex(const uint8_t* d, size_t l);
-
 #endif /* UTIL_H */

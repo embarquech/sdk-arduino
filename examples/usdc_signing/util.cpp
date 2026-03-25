@@ -21,23 +21,11 @@ uint8_t fromHex(char c) {
  * @param out Output byte array
  * @param len Number of bytes to convert
  */
+// cppcheck-suppress unusedFunction
 void hexToBytes(const char* hex, uint8_t* out, size_t len) {
     for (size_t i = 0; i < len; i++) {
         out[i] = (fromHex(hex[2*i]) << 4) | fromHex(hex[2*i+1]);
     }
-}
-
-/**
- * @brief Print a byte array as hex to Serial.
- * @param d Data array
- * @param l Length
- */
-void printHex(const uint8_t* d, size_t l) {
-    for (size_t i = 0; i < l; i++) {
-        if (d[i] < 0x10) Serial.print('0');
-        Serial.print(d[i], HEX);
-    }
-    Serial.println();
 }
 
 /**
