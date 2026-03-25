@@ -1,0 +1,5 @@
+<map id="SerialDriver" name="SerialDriver">
+<area shape="rect" id="Node000001" title="Abstract interface for serial communication." alt="" coords="36,5,135,31"/>
+<area shape="rect" id="Node000002" href="$classArduinoSerialAdapter.html" title="Concrete implementation of SerialDriver wrapping Arduino&#39;s HardwareSerial." alt="" coords="5,79,165,104"/>
+<area shape="poly" id="edge1_Node000001_Node000002" title=" " alt="" coords="88,44,88,79,83,79,83,44"/>
+</map>

@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['keccak_5frounds_0',['KECCAK_ROUNDS',['../keccak256_8cpp.html#aaf66c2daa0f1fe906b80b79969f67424',1,'keccak256.cpp']]]
+  ['input_5fbuffer_5flimit_0',['INPUT_BUFFER_LIMIT',['../CryptnoxWallet_8cpp.html#a933c4568c34613285feefecab74ab596',1,'CryptnoxWallet.cpp']]]
 ];
