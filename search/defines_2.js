@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['gas_5flimit_5ferc20_0',['GAS_LIMIT_ERC20',['../config_8template_8h.html#acb66e21431c90911d0fdef95cf34261b',1,'config.template.h']]]
+  ['enc_5fbuf_5fmax_5flen_0',['ENC_BUF_MAX_LEN',['../CryptnoxWallet_8cpp.html#aed7638aad5cb447691c51f0d6c48a14f',1,'CryptnoxWallet.cpp']]]
 ];
