@@ -22,7 +22,7 @@
 #include "config.h"
 #include <PN532Adapter.h>
 #include <CryptnoxWallet.h>
-#include <ArduinoSerialAdapter.h>
+#include <ArduinoLoggerAdapter.h>
 
 /** @brief PN532 SPI slave-select pin. */
 #define PN532_SS_PIN  (10U)
@@ -33,7 +33,7 @@
 #  define CARD_PIN_LEN (9U)
 #endif
 
-ArduinoSerialAdapter serialAdapter;
+ArduinoLoggerAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_SS_PIN, &SPI);
 CryptnoxWallet wallet(nfc, serialAdapter);
 

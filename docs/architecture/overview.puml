@@ -2,40 +2,48 @@
 title Cryptnox SDK Arduino - Layered architecture
 
 package "Cryptnox SDK Cpp" <<Frame>> {
+
 package "Library" {
     class CryptnoxWallet {
-        + CryptnoxWallet(nfcDriver, logger)
+        + CryptnoxWallet(driver, logger)
         + begin()
         + connect(session)
         + establishSecureChannel(session)
         + disconnect(session)
         + getCardInfo(session)
-        + verifyPin(session)
+        + verifyPin(session, pin, pinLength)
         + sign(request) : CW_SignResult
+        + writeUserData(session, slot, data, len)
         + {static} parseDerSignature(der, derLen, r, rLen, s, sLen)
         --
-        - logger : CW_Logger&
-        - secure : CW_SecureChannel
+        - _driver : CW_NfcTransport&
+        - _logger : CW_Logger&
+        - _crypto : ArduinoCryptoProvider
+        - _secure : CW_SecureChannel
     }
 }
 
 package "Secure stack" {
     class CW_SecureChannel {
-        + selectApdu(session, nfcDriver, logger, ...)
-        + openSecureChannel(session, driver, logger, ...)
-        + mutuallyAuthenticate(session, nfcDriver, logger, ...)
-        + aesCbcEncrypt(session, nfcDriver, logger, ...)
-        + aesCbcDecrypt(session, nfcDriver, logger, ...)
-        + checkStatusWord(...)
+        + CW_SecureChannel(driver, logger, crypto)
+        + selectApdu()
+        + getCardCertificate(cert, certLen)
+        + extractCardEphemeralKey(cert, pubKey64, pubKey65)
+        + openSecureChannel(salt, clientPubKey, clientPrivKey, curve)
+        + mutuallyAuthenticate(session, salt, ...)
+        + aesCbcEncrypt(session, apdu, apduLen, data, dataLen, ...)
+        + aesCbcDecrypt(session, response, responseLen, macValue, ...)
+        + checkStatusWord(response, len, sw1, sw2)
         --
-        - crypto : CW_CryptoProvider
-        - nfcDriver : CW_NfcTransport&
+        - _driver : CW_NfcTransport&
+        - _logger : CW_Logger&
+        - _crypto : CW_CryptoProvider&
     }
 
     class CW_SecureSession {
-        + aesKey[...]
-        + macKey[...]
-        + iv[...]
+        + aesKey[32]
+        + macKey[32]
+        + iv[16]
         --
         + CW_SecureSession()
         + clear() : void
@@ -45,10 +53,12 @@ package "Secure stack" {
         + session : CW_SecureSession&
         + keyType : uint8_t
         + signatureType : uint8_t
-        + pin[...]
+        + pin[9]
         + pinLessMode : bool
         + hash : const uint8_t*
         + hashLength : uint8_t
+        + derivePath : const uint8_t*
+        + derivePathLength : uint8_t
         --
         + CW_SignRequest(sess, kType, sigType, pinless)
     }
@@ -63,23 +73,24 @@ package "Secure stack" {
 
 package "Crypto abstraction" {
     abstract class CW_CryptoProvider {
-        + sha512(...)
-        + aesCbcEncrypt(...)
-        + aesCbcDecrypt(...)
-        + ecdh(...)
-        + random(...)
+        + sha512(data, len, out)
+        + aesCbcEncrypt(in, len, out, key, keyLen, iv, bitPadding)
+        + aesCbcDecrypt(in, len, out, key, keyLen, iv, bitPadding)
+        + ecdh(pubKey, privKey, secret, curve)
+        + makeKey(pubKey, privKey, curve)
+        + random(dest, size)
     }
 
     class ArduinoCryptoProvider {
+        + ArduinoCryptoProvider()
         + sha512(...)
         + aesCbcEncrypt(...)
         + aesCbcDecrypt(...)
         + ecdh(...)
+        + makeKey(...)
         + random(...)
         --
-        - aes : AESLib
-        - sha : SHA512
-        - trng : TRNG
+        - _aes : AESLib
     }
 }
 
@@ -87,41 +98,53 @@ package "Transport" {
     abstract class CW_NfcTransport {
         + begin()
         + inListPassiveTarget()
-        + sendAPDU(logger, ...)
+        + sendAPDU(apdu, apduLen, response, responseLen)
         + resetReader()
-        + printFirmwareVersion(logger, ...)
+        + printFirmwareVersion()
     }
 
     class PN532Adapter {
+        + PN532Adapter(logger, ssPin, theSPI)
         + begin()
-        + sendAPDU(logger, ...)
+        + sendAPDU(...)
         + inListPassiveTarget()
         + resetReader()
-        + printFirmwareVersion(logger, ...)
+        + printFirmwareVersion()
         --
         - nfc : Adafruit_PN532*
+        - serial : CW_Logger*
     }
 }
 
 package "Logging" {
     abstract class CW_Logger {
-        + begin()
+        + begin(baudRate)
         + print(...)
         + println(...)
     }
 
     class ArduinoLoggerAdapter {
-        + ArduinoSerialAdapter(serial)
+        + ArduinoLoggerAdapter()
+        + ArduinoLoggerAdapter(serial)
         + print(...)
         + println(...)
         --
-        - serial : HardwareSerial*
+        - _serial : HardwareSerial*
     }
 }
+
+package "Utilities" {
+    class CryptnoxUtils <<static>> {
+        + {static} secure_compare(a, b, len) : bool
+        + {static} secure_wipe(buf, len) : void
+        + {static} trng_byte() : uint8_t
+    }
+}
+
 }
 
 package "External Libraries" <<Frame>> #FFFDE7 {
-    
+
     class Adafruit_PN532 <<library>> {
         + begin() : void
         + inDataExchange() : bool
@@ -129,18 +152,18 @@ package "External Libraries" <<Frame>> #FFFDE7 {
         + SAMConfig() : void
         + getFirmwareVersion() : uint32_t
     }
-    
+
     class AESLib <<library>> {
         + set_paddingmode(mode) : void
-        + encrypt(input, len, output, key, keyLen, iv) : uint16_t
-        + decrypt(input, len, output, key, keyLen, iv) : uint16_t
+        + encrypt(...) : uint16_t
+        + decrypt(...) : uint16_t
     }
-    
+
     class "uECC (micro-ecc)" as uECC <<library>> {
-        + uECC_secp256r1() : uECC_Curve_t
         + uECC_make_key(pubKey, privKey, curve) : bool
         + uECC_shared_secret(pubKey, privKey, secret, curve) : int
         + uECC_set_rng(rng_callback) : void
+        + uECC_secp256r1() : uECC_Curve_t
     }
 
     class SHA512 <<library>> {
@@ -150,8 +173,6 @@ package "External Libraries" <<Frame>> #FFFDE7 {
 
     class "trng" as TRNGLib <<library>> {
         + begin() : void
-        + fillRandom(buf, len) : bool
-        + random8(out) : bool
         + random32(out) : bool
     }
 
@@ -163,29 +184,35 @@ package "External Libraries" <<Frame>> #FFFDE7 {
 }
 
 ' ==============================
-' Relations principales
+' Relations
 ' ==============================
 
-CryptnoxWallet --> CW_SecureChannel
+CryptnoxWallet --> CW_NfcTransport
 CryptnoxWallet --> CW_Logger
+CryptnoxWallet *-- "1" ArduinoCryptoProvider
+CryptnoxWallet *-- "1" CW_SecureChannel
 CryptnoxWallet ..> CW_SignRequest
 CryptnoxWallet ..> CW_SignResult
-CW_SecureChannel *.. CW_SecureSession
-CW_SecureChannel --> CW_CryptoProvider
+
 CW_SecureChannel --> CW_NfcTransport
+CW_SecureChannel --> CW_Logger
+CW_SecureChannel --> CW_CryptoProvider
+CW_SecureChannel ..> CW_SecureSession
+
 CW_SignRequest --> CW_SecureSession
 
 CW_CryptoProvider <|.. ArduinoCryptoProvider
 CW_NfcTransport <|.. PN532Adapter
 CW_Logger <|.. ArduinoLoggerAdapter
 
-
 ArduinoLoggerAdapter --> HardwareSerial
+PN532Adapter *-- "1" Adafruit_PN532
 
 ArduinoCryptoProvider *-- "1" AESLib
 ArduinoCryptoProvider ..> uECC
-ArduinoCryptoProvider *-- "1" SHA512
-ArduinoCryptoProvider *-- "1" TRNGLib
-PN532Adapter *-- "1" Adafruit_PN532
+ArduinoCryptoProvider ..> SHA512
+ArduinoCryptoProvider ..> CryptnoxUtils
+
+CryptnoxUtils ..> TRNGLib
 
 @enduml

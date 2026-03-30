@@ -9,7 +9,7 @@
 
 #include <PN532Adapter.h>
 #include <CryptnoxWallet.h>
-#include <ArduinoSerialAdapter.h>
+#include <ArduinoLoggerAdapter.h>
 
 /**
  * @def PN532_SS
@@ -21,7 +21,7 @@
 #define DEFAULT_PIN       "000000000"
 #define DEFAULT_PIN_LEN   (sizeof(DEFAULT_PIN) - 1U)
 
-ArduinoSerialAdapter serialAdapter;
+ArduinoLoggerAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_SS, &SPI);
 CryptnoxWallet wallet(nfc, serialAdapter);
 

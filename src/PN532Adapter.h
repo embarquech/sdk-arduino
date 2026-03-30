@@ -3,8 +3,8 @@
 
 #include <Arduino.h>
 #include <Adafruit_PN532.h>
-#include "NFCDriver.h"
-#include "SerialDriver.h"
+#include "CW_NfcTransport.h"
+#include "CW_Logger.h"
 
 /**
  * @brief Enum representing the supported communication interfaces for the PN532 NFC module.
@@ -31,50 +31,46 @@ enum class PN532Interface {
  * The adapter handles initialization, UID reading, APDU communication,
  * passive target detection, firmware info retrieval, and reader reset.
  */
-class PN532Adapter : public NFCDriver {
+class PN532Adapter : public CW_NfcTransport {
 public:
     /**
      * @brief Constructs a PN532Adapter using hardware SPI.
      *
-     * @param serialDriver Reference to SerialDriver for debug output.
+     * @param logger Reference to CW_Logger for debug output.
      * @param ssPin The SPI slave select (SS) pin connected to the PN532.
      * @param theSPI Pointer to SPIClass instance to use (default is &SPI).
-     *
-     * @note This constructor configures the Adafruit_PN532 driver for hardware SPI.
      */
-    PN532Adapter(SerialDriver& serialDriver, uint8_t ssPin, SPIClass *theSPI = &SPI);
+    PN532Adapter(CW_Logger& logger, uint8_t ssPin, SPIClass *theSPI = &SPI);
 
     /**
      * @brief Constructs a PN532Adapter using software SPI (bit-banged).
      *
-     * @param serialDriver Reference to SerialDriver for debug output.
+     * @param logger Reference to CW_Logger for debug output.
      * @param clk Clock pin.
      * @param miso MISO pin.
      * @param mosi MOSI pin.
      * @param ss SPI slave select pin.
-     *
-     * @note Software SPI allows usage of arbitrary pins but is slower than hardware SPI.
      */
-    PN532Adapter(SerialDriver& serialDriver, uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t ss);
+    PN532Adapter(CW_Logger& logger, uint8_t clk, uint8_t miso, uint8_t mosi, uint8_t ss);
 
     /**
      * @brief Constructs a PN532Adapter using the I2C interface.
      *
-     * @param serialDriver Reference to SerialDriver for debug output.
-     * @param irqPin The IRQ pin (optional for some configurations).
+     * @param logger Reference to CW_Logger for debug output.
+     * @param irqPin The IRQ pin.
      * @param resetPin The reset pin of the PN532 module.
      * @param wire Pointer to TwoWire instance to use (default is &Wire).
      */
-    PN532Adapter(SerialDriver& serialDriver, uint8_t irqPin, uint8_t resetPin, TwoWire *wire = &Wire);
+    PN532Adapter(CW_Logger& logger, uint8_t irqPin, uint8_t resetPin, TwoWire *wire = &Wire);
 
     /**
      * @brief Constructs a PN532Adapter using UART.
      *
-     * @param serialDriver Reference to SerialDriver for debug output.
+     * @param logger Reference to CW_Logger for debug output.
      * @param resetPin The reset pin of the PN532 module.
      * @param uartSerial Pointer to HardwareSerial instance to use for UART.
      */
-    PN532Adapter(SerialDriver& serialDriver, uint8_t resetPin, HardwareSerial *uartSerial);
+    PN532Adapter(CW_Logger& logger, uint8_t resetPin, HardwareSerial *uartSerial);
 
     /**
      * @brief Destructor.
@@ -152,7 +148,7 @@ public:
     ///@}
 
 private:
-    SerialDriver* serial = NULL; ///< Serial driver for debug output.
+    CW_Logger* serial = NULL; ///< Serial driver for debug output.
     PN532Interface interface; ///< The active interface type currently used.
     Adafruit_PN532* nfc = NULL; ///< Pointer to the underlying Adafruit_PN532 instance.
 };
