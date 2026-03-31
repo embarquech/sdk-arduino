@@ -9,7 +9,7 @@
 #include "CW_Defs.h"
 #include "CW_NfcTransport.h"
 #include "CW_Logger.h"
-#include "ArduinoCryptoProvider.h"
+#include "CW_CryptoProvider.h"
 #include "CW_SecureChannel.h"
 
 /******************************************************************
@@ -66,8 +66,8 @@ struct CW_SignResult {
  * Manages card connection, secure channel establishment (delegated to
  * CW_SecureChannel), PIN verification, signing, and user data writing.
  *
- * The crypto provider (ArduinoCryptoProvider) is owned internally; the
- * NFC transport and logger are injected by the caller.
+ * All three dependencies (NFC transport, logger, crypto provider) are
+ * injected by the caller, keeping this class platform-independent.
  */
 class CryptnoxWallet {
 public:
@@ -76,8 +76,9 @@ public:
      *
      * @param driver Reference to the NFC transport implementation.
      * @param logger Reference to the logging implementation.
+     * @param crypto Reference to the crypto provider implementation.
      */
-    CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger);
+    CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger, CW_CryptoProvider& crypto);
 
     CryptnoxWallet(const CryptnoxWallet&) = delete;
     CryptnoxWallet& operator=(const CryptnoxWallet&) = delete;
@@ -168,7 +169,7 @@ public:
 private:
     CW_NfcTransport&       _driver;  ///< NFC transport (for begin/connect/disconnect).
     CW_Logger&             _logger;  ///< Logging interface.
-    ArduinoCryptoProvider  _crypto;  ///< Owned concrete crypto provider (declared before _secure).
+    CW_CryptoProvider&     _crypto;  ///< Injected crypto provider (declared before _secure).
     CW_SecureChannel       _secure;  ///< Owned secure channel (uses _driver, _logger, _crypto).
 
     bool isSecureChannelOpen(const CW_SecureSession& session) const;

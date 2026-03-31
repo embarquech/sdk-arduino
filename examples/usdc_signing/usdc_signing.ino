@@ -23,6 +23,7 @@
 #include <PN532Adapter.h>
 #include <CryptnoxWallet.h>
 #include <ArduinoLoggerAdapter.h>
+#include <ArduinoCryptoProvider.h>
 
 /** @brief PN532 SPI slave-select pin. */
 #define PN532_SS_PIN  (10U)
@@ -34,8 +35,9 @@
 #endif
 
 ArduinoLoggerAdapter serialAdapter;
+ArduinoCryptoProvider cryptoProvider;
 PN532Adapter nfc(serialAdapter, PN532_SS_PIN, &SPI);
-CryptnoxWallet wallet(nfc, serialAdapter);
+CryptnoxWallet wallet(nfc, serialAdapter, cryptoProvider);
 
 /** ERC-20 transfer(address,uint256) function selector: keccak256("transfer(address,uint256)")[0..3] */
 #define ERC20_TRANSFER_SEL_0  0xa9U

@@ -5,7 +5,7 @@ package "Cryptnox SDK Cpp" <<Frame>> {
 
 package "Library" {
     class CryptnoxWallet {
-        + CryptnoxWallet(driver, logger)
+        + CryptnoxWallet(driver, logger, crypto)
         + begin()
         + connect(session)
         + establishSecureChannel(session)
@@ -18,7 +18,7 @@ package "Library" {
         --
         - _driver : CW_NfcTransport&
         - _logger : CW_Logger&
-        - _crypto : ArduinoCryptoProvider
+        - _crypto : CW_CryptoProvider&
         - _secure : CW_SecureChannel
     }
 }
@@ -189,7 +189,7 @@ package "External Libraries" <<Frame>> #FFFDE7 {
 
 CryptnoxWallet --> CW_NfcTransport
 CryptnoxWallet --> CW_Logger
-CryptnoxWallet *-- "1" ArduinoCryptoProvider
+CryptnoxWallet --> CW_CryptoProvider
 CryptnoxWallet *-- "1" CW_SecureChannel
 CryptnoxWallet ..> CW_SignRequest
 CryptnoxWallet ..> CW_SignResult

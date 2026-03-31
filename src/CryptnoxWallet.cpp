@@ -5,8 +5,8 @@
  * Constructor
  ******************************************************************/
 
-CryptnoxWallet::CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger)
-    : _driver(driver), _logger(logger), _crypto(), _secure(driver, logger, _crypto) {
+CryptnoxWallet::CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger, CW_CryptoProvider& crypto)
+    : _driver(driver), _logger(logger), _crypto(crypto), _secure(driver, logger, _crypto) {
 }
 
 /******************************************************************
