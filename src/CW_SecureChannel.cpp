@@ -50,6 +50,26 @@ CW_SecureChannel::CW_SecureChannel(CW_NfcTransport& driver,
 }
 
 /******************************************************************
+ * Transport delegation methods
+ ******************************************************************/
+
+bool CW_SecureChannel::begin() {
+    return _driver.begin();
+}
+
+bool CW_SecureChannel::inListPassiveTarget() {
+    return _driver.inListPassiveTarget();
+}
+
+void CW_SecureChannel::resetReader() {
+    _driver.resetReader();
+}
+
+bool CW_SecureChannel::printFirmwareVersion() {
+    return _driver.printFirmwareVersion();
+}
+
+/******************************************************************
  * Private helpers
  ******************************************************************/
 

@@ -16,9 +16,7 @@ package "Library" {
         + writeUserData(session, slot, data, len)
         + {static} parseDerSignature(der, derLen, r, rLen, s, sLen)
         --
-        - _driver : CW_NfcTransport&
         - _logger : CW_Logger&
-        - _crypto : CW_CryptoProvider&
         - _secure : CW_SecureChannel
     }
 }
@@ -26,6 +24,10 @@ package "Library" {
 package "Secure stack" {
     class CW_SecureChannel {
         + CW_SecureChannel(driver, logger, crypto)
+        + begin()
+        + inListPassiveTarget()
+        + resetReader()
+        + printFirmwareVersion()
         + selectApdu()
         + getCardCertificate(cert, certLen)
         + extractCardEphemeralKey(cert, pubKey64, pubKey65)
@@ -187,9 +189,7 @@ package "External Libraries" <<Frame>> #FFFDE7 {
 ' Relations
 ' ==============================
 
-CryptnoxWallet --> CW_NfcTransport
 CryptnoxWallet --> CW_Logger
-CryptnoxWallet --> CW_CryptoProvider
 CryptnoxWallet *-- "1" CW_SecureChannel
 CryptnoxWallet ..> CW_SignRequest
 CryptnoxWallet ..> CW_SignResult

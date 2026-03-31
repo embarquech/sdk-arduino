@@ -46,6 +46,29 @@ public:
     CW_SecureChannel& operator=(const CW_SecureChannel&) = delete;
 
     /**
+     * @brief Initialize the NFC transport module.
+     * @return true if the module was successfully initialised, false otherwise.
+     */
+    bool begin();
+
+    /**
+     * @brief Detect a passive NFC target (ISO-DEP card).
+     * @return true if a card was found, false otherwise.
+     */
+    bool inListPassiveTarget();
+
+    /**
+     * @brief Reset the NFC reader hardware.
+     */
+    void resetReader();
+
+    /**
+     * @brief Print the NFC reader firmware version to the logger.
+     * @return true on success, false otherwise.
+     */
+    bool printFirmwareVersion();
+
+    /**
      * @brief Send the SELECT APDU to activate the Cryptnox application.
      * @return true on success, false otherwise.
      */

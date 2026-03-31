@@ -6,7 +6,7 @@
  ******************************************************************/
 
 CryptnoxWallet::CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger, CW_CryptoProvider& crypto)
-    : _driver(driver), _logger(logger), _crypto(crypto), _secure(driver, logger, _crypto) {
+    : _logger(logger), _secure(driver, logger, crypto) {
 }
 
 /******************************************************************
@@ -14,7 +14,7 @@ CryptnoxWallet::CryptnoxWallet(CW_NfcTransport& driver, CW_Logger& logger, CW_Cr
  ******************************************************************/
 
 bool CryptnoxWallet::begin() {
-    bool ret = _driver.begin();
+    bool ret = _secure.begin();
     if (ret) {
         printPN532FirmwareVersion();
     }
@@ -30,11 +30,11 @@ bool CryptnoxWallet::connect(CW_SecureSession& session) {
             _logger.print(F("Retrying card connection (attempt "));
             _logger.print((uint8_t)(attempt + 1U));
             _logger.println(F(")..."));
-            _driver.resetReader();
+            _secure.resetReader();
             delay(200);
         }
 
-        if (_driver.inListPassiveTarget()) {
+        if (_secure.inListPassiveTarget()) {
             delay(200);
             if (establishSecureChannel(session)) {
                 ret = true;
@@ -90,7 +90,7 @@ void CryptnoxWallet::disconnect(CW_SecureSession& session) {
     if (isSecureChannelOpen(session)) {
         session.clear();
     }
-    _driver.resetReader();
+    _secure.resetReader();
 }
 
 // cppcheck-suppress unusedFunction
@@ -256,7 +256,7 @@ bool CryptnoxWallet::isSecureChannelOpen(const CW_SecureSession& session) const 
 }
 
 bool CryptnoxWallet::printPN532FirmwareVersion() {
-    return _driver.printFirmwareVersion();
+    return _secure.printFirmwareVersion();
 }
 
 bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignResult& result) {

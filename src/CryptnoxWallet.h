@@ -7,9 +7,7 @@
 
 #include <Arduino.h>
 #include "CW_Defs.h"
-#include "CW_NfcTransport.h"
 #include "CW_Logger.h"
-#include "CW_CryptoProvider.h"
 #include "CW_SecureChannel.h"
 
 /******************************************************************
@@ -66,8 +64,9 @@ struct CW_SignResult {
  * Manages card connection, secure channel establishment (delegated to
  * CW_SecureChannel), PIN verification, signing, and user data writing.
  *
- * All three dependencies (NFC transport, logger, crypto provider) are
- * injected by the caller, keeping this class platform-independent.
+ * Dependencies are injected by the caller. CryptnoxWallet interfaces
+ * exclusively with CW_SecureChannel (Secure Stack) and CW_Logger (Logging),
+ * keeping this class platform-independent.
  */
 class CryptnoxWallet {
 public:
@@ -167,10 +166,8 @@ public:
                                   uint8_t* s, uint8_t& sLength);
 
 private:
-    CW_NfcTransport&       _driver;  ///< NFC transport (for begin/connect/disconnect).
-    CW_Logger&             _logger;  ///< Logging interface.
-    CW_CryptoProvider&     _crypto;  ///< Injected crypto provider (declared before _secure).
-    CW_SecureChannel       _secure;  ///< Owned secure channel (uses _driver, _logger, _crypto).
+    CW_Logger&       _logger;  ///< Logging interface.
+    CW_SecureChannel _secure;  ///< Owned secure channel.
 
     bool isSecureChannelOpen(const CW_SecureSession& session) const;
     bool printPN532FirmwareVersion();
