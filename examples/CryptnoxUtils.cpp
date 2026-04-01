@@ -16,6 +16,11 @@ bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t le
     return diff == 0U;
 }
 
+/**
+ * @brief Overwrite a buffer with zeros to erase sensitive data.
+ * @param buf Pointer to the buffer to wipe.
+ * @param len Number of bytes to overwrite.
+ */
 // cppcheck-suppress unusedFunction
 void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
     volatile uint8_t* p = buf;
@@ -24,6 +29,10 @@ void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
     }
 }
 
+/**
+ * @brief Generate one pseudo-random byte using Arduino's randomSeed/random.
+ * @return A random byte in the range [0, 255].
+ */
 uint8_t CryptnoxUtils::trng_byte() {
     static bool seeded = false;
     if (seeded == false) {

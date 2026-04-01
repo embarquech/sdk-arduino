@@ -216,6 +216,8 @@ void sendRawTx(const uint8_t* raw, size_t len) {
             delay(2000);
         }
         if (WiFi.status() != WL_CONNECTED) {
+            Serial.println(F("sendRawTx: WiFi not connected, reconnecting..."));
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             continue;
         }
         WiFiSSLClient wifiClient;
@@ -303,6 +305,8 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         hexBuf[vOffset + 63] = hexChars[v & 0x0f];
 
         if (WiFi.status() != WL_CONNECTED) {
+            Serial.println(F("determineYParity: WiFi not connected, reconnecting..."));
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             continue;
         }
         WiFiSSLClient wifiClient;
@@ -364,6 +368,8 @@ uint64_t fetchNonce() {
             delay(1000);
         }
         if (WiFi.status() != WL_CONNECTED) {
+            Serial.println(F("fetchNonce: WiFi not connected, reconnecting..."));
+            WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             continue;
         }
         WiFiSSLClient wifiClient;
