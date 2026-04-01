@@ -20,6 +20,9 @@ jobs:
       - name: Run MISRA C analysis (compile_commands mode)
         working-directory: examples
         run: |
+          # cppcheck 2.x raises meta-warnings for --inline-suppr tags that have no matching violation in the
+          # analysed source; --suppress=unmatchedSuppression silences those meta-warnings so only real MISRA
+          # violations cause a non-zero exit code.
           cppcheck \
             --enable=all \
             --std=c++11 \
@@ -29,9 +32,6 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
-            # cppcheck 2.x raises meta-warnings for --inline-suppr tags that have no matching violation in the
-            # analysed source; --suppress=unmatchedSuppression silences those meta-warnings so only real MISRA
-            # violations cause a non-zero exit code.
             --suppress=unmatchedSuppression \
             --force \
             -DSTATIC_ANALYSIS=1 \
