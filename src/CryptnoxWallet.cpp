@@ -530,6 +530,8 @@ int CryptnoxWallet::uECC_RNG(uint8_t *dest, unsigned size) {
 
         if (TRNG.fillRandom(dest, size)) {
             ret = 1;
+        } else {
+            Serial.println(F("TRNG.fillRandom failed"));
         }
     }
 

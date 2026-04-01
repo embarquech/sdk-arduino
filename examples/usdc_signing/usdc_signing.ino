@@ -48,6 +48,9 @@ CryptnoxWallet wallet(nfc, serialAdapter);
 /** @brief Sentinel returned by determineYParity() when recovery fails. */
 #define YPARITY_UNKNOWN 0xFFU
 
+/** @brief Expected HTTP 200 OK status code. */
+#define HTTP_OK 200
+
 /**
  * @brief Ethereum EIP-1559 transaction structure.
  */
@@ -208,9 +211,13 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_sendRawTransaction\","
         "\"params\":[\"0x";
     static const char kSfx[] = "\"]}";
-    for (uint8_t attempt = 0; attempt < 3; attempt++) {
-        if (attempt) delay(2000);
-        if (WiFi.status() != WL_CONNECTED) { continue; }
+    for (uint8_t attempt = 0; attempt < 3U; attempt++) {
+        if (attempt) {
+            delay(2000);
+        }
+        if (WiFi.status() != WL_CONNECTED) {
+            continue;
+        }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -220,7 +227,8 @@ void sendRawTx(const uint8_t* raw, size_t len) {
             (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
         client.beginBody();
         client.print(kPfx);
-        char b[3]; b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
+        char b[3];
+        b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
         for (size_t i = 0; i < len; i++) {
             b[0] = hexC[raw[i] >> 4];  /* high nibble */
             b[1] = hexC[raw[i] & 0x0f]; /* low nibble */
@@ -229,13 +237,16 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         client.print(kSfx);
         client.endRequest();
         int status = client.responseStatusCode();
-        Serial.print(F("Status:")); Serial.println(status);
-        if (status > 0) {
+        Serial.print(F("Status:"));
+        Serial.println(status);
+        bool txSent = (status > 0);
+        if (txSent) {
             Serial.println(client.responseBody());
-            client.stop();
-            return;
         }
         client.stop();
+        if (txSent) {
+            return;
+        }
     }
 }
 
@@ -263,7 +274,9 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     }
     /* v field: 31 zero bytes (62 '0' chars) then 1 value byte — filled per iteration */
     const uint8_t vOffset = pos;
-    for (uint8_t i = 0U; i < 62U; i++) hexBuf[pos++] = '0';
+    for (uint8_t i = 0U; i < 62U; i++) {
+        hexBuf[pos++] = '0';
+    }
     pos += 2U; /* placeholder for v byte */
     for (uint8_t i = 0U; i < 32U; i++) {
         hexBuf[pos++] = hexChars[r[i] >> 4];
@@ -289,7 +302,9 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         hexBuf[vOffset + 62] = hexChars[v >> 4];
         hexBuf[vOffset + 63] = hexChars[v & 0x0f];
 
-        if (WiFi.status() != WL_CONNECTED) { continue; }
+        if (WiFi.status() != WL_CONNECTED) {
+            continue;
+        }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -303,8 +318,10 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         client.endRequest();
 
         int status = client.responseStatusCode();
-        Serial.print(yp); Serial.print(':'); Serial.println(status);
-        if (status != 200) {
+        Serial.print(yp);
+        Serial.print(':');
+        Serial.println(status);
+        if (status != HTTP_OK) {
             client.stop();
             continue;
         }
@@ -312,10 +329,12 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         client.stop();
         int resultIdx = response.indexOf("\"result\"");
         if (resultIdx < 0) {
+            Serial.println(F("ecrecover: no result field in response"));
             continue;
         }
         int hexIdx = response.indexOf("0x", resultIdx);
         if (hexIdx < 0) {
+            Serial.println(F("ecrecover: no hex value in result"));
             continue;
         }
         /* ecrecover returns 32-byte word; address = last 20 bytes = last 40 hex chars */
@@ -340,9 +359,13 @@ uint64_t fetchNonce() {
     static const char kSfx[] = "\",\"pending\"]}";
     const int bodyLen = (int)(sizeof(kPfx)-1) + 40 + (int)(sizeof(kSfx)-1);
 
-    for (uint8_t attempt = 0; attempt < 3; attempt++) {
-        if (attempt) delay(1000);
-        if (WiFi.status() != WL_CONNECTED) { continue; }
+    for (uint8_t attempt = 0; attempt < 3U; attempt++) {
+        if (attempt) {
+            delay(1000);
+        }
+        if (WiFi.status() != WL_CONNECTED) {
+            continue;
+        }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
         client.beginRequest();
@@ -356,8 +379,12 @@ uint64_t fetchNonce() {
         client.endRequest();
 
         int status = client.responseStatusCode();
-        Serial.print(F("Nonce status:")); Serial.println(status);
-        if (status != 200) { client.stop(); continue; }
+        Serial.print(F("Nonce status:"));
+        Serial.println(status);
+        if (status != HTTP_OK) {
+            client.stop();
+            continue;
+        }
         String resp = client.responseBody();
         client.stop();
         int ri = resp.indexOf("\"result\"");
@@ -431,7 +458,9 @@ void setup() {
     for (uint8_t attempt = 0U; attempt < 3U; attempt++) {
         if (attempt) delay(1000);
         CW_SecureSession session;
-        while (!wallet.connect(session)) { delay(200); }
+        while (!wallet.connect(session)) {
+            delay(200);
+        }
         Serial.println(F("Card connected, secure channel established."));
 
         CW_SignRequest signReq(session, CW_SIGN_CURR_K1, CW_SIGN_SIG_ECDSA_LOW_S, CW_SIGN_WITH_PIN);
@@ -441,7 +470,9 @@ void setup() {
 
         signResult = wallet.sign(signReq);
         wallet.disconnect(session);
-        if (signResult.errorCode == CW_OK) break;
+        if (signResult.errorCode == CW_OK) {
+            break;
+        }
         Serial.print(F("Sign attempt ")); Serial.print(attempt + 1U); Serial.println(F(" failed."));
     }
 
