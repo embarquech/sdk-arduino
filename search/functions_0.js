@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['convertnumbertouintarray_0',['convertnumbertouintarray',['../util_8cpp.html#aa67ee677ee57c906b204deefa6e63888',1,'ConvertNumberToUintArray(uint8_t *str, uint32_t val):&#160;util.cpp'],['../util_8h.html#aa67ee677ee57c906b204deefa6e63888',1,'ConvertNumberToUintArray(uint8_t *str, uint32_t val):&#160;util.cpp']]]
+  ['arduinoserialadapter_0',['arduinoserialadapter',['../classArduinoSerialAdapter.html#a423ed72b2a6dfffa46808eb62d062d29',1,'ArduinoSerialAdapter::ArduinoSerialAdapter()'],['../classArduinoSerialAdapter.html#ad25712bcd5cfce6b7e073ffd56bee3ec',1,'ArduinoSerialAdapter::ArduinoSerialAdapter(HardwareSerial *serial)'],['../classArduinoSerialAdapter.html#a6e701c39a67fc43d0ac52ba00b55857e',1,'ArduinoSerialAdapter::ArduinoSerialAdapter(const ArduinoSerialAdapter &amp;)=delete']]]
 ];

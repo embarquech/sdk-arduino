@@ -1,4 +1,5 @@
 var searchData=
 [
-  ['infura_5fproject_5fid_0',['INFURA_PROJECT_ID',['../config_8template_8h.html#ac64c550681f311b1b80660013ccd23ab',1,'config.template.h']]]
+  ['getcardcertificate_5fin_5fbytes_0',['GETCARDCERTIFICATE_IN_BYTES',['../CryptnoxWallet_8cpp.html#add6226a3b0f8dde62724922f00f0333a',1,'CryptnoxWallet.cpp']]],
+  ['getcardinfo_1',['getCardInfo',['../classCryptnoxWallet.html#a14a8f392e44c6960205aa6514f99b34f',1,'CryptnoxWallet']]]
 ];
