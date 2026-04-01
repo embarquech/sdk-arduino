@@ -17,20 +17,15 @@ void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
 }
 
 uint8_t CryptnoxUtils::trng_byte() {
-    static bool     initialized = false;
-    static uint32_t rngBuf      = 0U;
-    static uint8_t  rngPos      = 4U; /* 4 => force refill on first call */
-
+    static bool initialized = false;
     if (!initialized) {
         TRNG.begin();
         initialized = true;
     }
-    if (rngPos >= 4U) {
-        TRNG.random32(&rngBuf);
-        rngPos = 0U;
+    uint8_t b = 0U;
+    if (!TRNG.random8(&b)) {
+        Serial.println(F("TRNG.random8 failed"));
     }
-    const uint8_t b = (uint8_t)((rngBuf >> (rngPos * 8U)) & 0xFFU);
-    rngPos++;
     return b;
 }
 

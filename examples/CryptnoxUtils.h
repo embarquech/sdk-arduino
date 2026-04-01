@@ -48,10 +48,10 @@ public:
     /**
      * @brief Generate a single cryptographically random byte using the RA4M1 hardware TRNG.
      *
-     * Initialises the hardware TRNG on first call. Consumes one 32-bit hardware
-     * random word per 4 calls to avoid wasting entropy.
+     * Initialises the hardware TRNG on first call, then calls TRNG.random8() directly
+     * for each byte. Logs an error to Serial if the hardware TRNG call fails.
      *
-     * @return A random byte in [0, 255].
+     * @return A random byte in [0, 255], or 0 if the TRNG call failed.
      */
     static uint8_t trng_byte();
 

@@ -297,9 +297,10 @@ bool CryptnoxWallet::getCardCertificate(uint8_t* cardCertificate, uint8_t &cardC
             serial.println(F("APDU getCardCertificate failed."));
         }
 
+        /* Wipe sensitive random nonce from the stack regardless of success or failure */
         CryptnoxUtils::secure_wipe(randomBytes, sizeof(randomBytes));
     }
-    
+
     return ret;
 }
 
@@ -654,6 +655,15 @@ bool CryptnoxWallet::extractCardEphemeralKey(const uint8_t* cardCertificate, uin
 #if CW_ENABLE_SENSITIVE_LOGS
         serial.println();
 #endif
+        /* TODO(security): The certificate also contains an ASN.1 DER signature
+         * (bytes 74+) produced by the card's permanent P-256 private key over the
+         * first 74 bytes ('C' byte + 8-byte nonce + 65-byte session public key).
+         * That signature must be verified against the card's permanent public key
+         * to confirm the ephemeral key was issued by the genuine card and was not
+         * substituted by a MITM attacker.  Verification is not yet implemented
+         * because the card's permanent public key is not available to this function.
+         * See security finding #10. */
+
         ret = true;  /* Success */
     }
 
@@ -810,7 +820,13 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
                 result.errorCode = CW_OK;
             }
         }
+
+        /* Wipe the payload buffer (contains hash + PIN) before it leaves the stack */
+        CryptnoxUtils::secure_wipe(data, sizeof(data));
     }
+
+    /* Wipe the PIN from the caller's request struct so it does not linger in memory */
+    CryptnoxUtils::secure_wipe(request.pin, sizeof(request.pin));
 
     return result;
 }
