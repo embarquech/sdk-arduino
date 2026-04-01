@@ -218,11 +218,14 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Securely zero a buffer, guaranteed not to be optimised away. </p>
+<p>Overwrite a buffer with zeros to erase sensitive data.</p>
 <p>Uses a volatile pointer so the compiler cannot elide the writes, ensuring sensitive material is actually erased from memory.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">buf</td><td>Pointer to the buffer to wipe. </td></tr>
-    <tr><td class="paramname">len</td><td>Number of bytes to zero. </td></tr>
+    <tr><td class="paramname">len</td><td>Number of bytes to zero.</td></tr>
+    <tr><td class="paramname">buf</td><td>Pointer to the buffer to wipe. </td></tr>
+    <tr><td class="paramname">len</td><td>Number of bytes to overwrite. </td></tr>
   </table>
   </dd>
 </dl>
@@ -253,8 +256,11 @@ Static Public Member Functions</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Generate a single cryptographically random byte. </p>
+<p>Generate one pseudo-random byte using Arduino's randomSeed/random.</p>
 <p>Seeds the PRNG once on first call using analogRead noise.</p>
-<dl class="section return"><dt>Returns</dt><dd>A random byte in [0, 255]. </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>A random byte in [0, 255].</dd>
+<dd>
+A random byte in the range [0, 255]. </dd></dl>
 
 </div>
 </div>
