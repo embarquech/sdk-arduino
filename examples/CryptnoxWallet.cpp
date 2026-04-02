@@ -829,8 +829,14 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request)
         CryptnoxUtils::secure_wipe(data, sizeof(data));
     }
 
-    /* Wipe the PIN from the caller's request struct so it does not linger in memory */
+    /* Wipe every POD field in the caller's request struct.
+     * (CW_SecureSession& session is a reference and cannot be zeroed here.) */
     CryptnoxUtils::secure_wipe(request.pin, sizeof(request.pin));
+    request.keyType       = 0U;
+    request.signatureType = 0U;
+    request.pinLessMode   = false;
+    request.hash          = nullptr;
+    request.hashLength    = 0U;
 
     return result;
 }
