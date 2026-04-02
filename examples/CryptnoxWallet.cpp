@@ -135,6 +135,9 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
                 } else {
                     serial.println(F("Failed to open secure channel"));
                 }
+                CryptnoxUtils::secure_wipe(openSecureChannelSalt, sizeof(openSecureChannelSalt));
+                CryptnoxUtils::secure_wipe(clientPrivateKey,       sizeof(clientPrivateKey));
+                CryptnoxUtils::secure_wipe(clientPublicKey,        sizeof(clientPublicKey));
             } else {
                 serial.println(F("Failed to extract card ephemeral key"));
             }
@@ -512,8 +515,9 @@ bool CryptnoxWallet::mutuallyAuthenticate(CW_SecureSession& session, const uint8
         CryptnoxUtils::secure_wipe(sha512Output,  sizeof(sha512Output));
         CryptnoxUtils::secure_wipe(concat,        sizeof(concat));
         CryptnoxUtils::secure_wipe(RNG_data,      sizeof(RNG_data));
-        CryptnoxUtils::secure_wipe(ciphertextOPC, sizeof(ciphertextOPC));
-        CryptnoxUtils::secure_wipe(MAC_data,      sizeof(MAC_data));
+        CryptnoxUtils::secure_wipe(ciphertextOPC,     sizeof(ciphertextOPC));
+        CryptnoxUtils::secure_wipe(MAC_data,          sizeof(MAC_data));
+        CryptnoxUtils::secure_wipe(ciphertextMACLong, sizeof(ciphertextMACLong));
     }
 
     return ret;
