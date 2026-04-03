@@ -1,7 +1,5 @@
 #include "CryptnoxUtils.h"
-#ifndef STATIC_ANALYSIS
-#  include <trng.h>
-#endif
+#include <trng.h>
 
 bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
     uint8_t diff = 0U;
@@ -19,7 +17,6 @@ void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
 }
 
 uint8_t CryptnoxUtils::trng_byte() {
-#ifndef STATIC_ANALYSIS
     static bool initialized = false;
     if (!initialized) {
         TRNG.begin();
@@ -30,9 +27,6 @@ uint8_t CryptnoxUtils::trng_byte() {
         Serial.println(F("TRNG.random8 failed"));
     }
     return b;
-#else
-    return 0U; /* stub for static analysis — TRNG not available */
-#endif
 }
 
 int CryptnoxUtils::uECC_rng_callback(uint8_t* dest, unsigned size) {

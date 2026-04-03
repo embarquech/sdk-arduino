@@ -78,11 +78,12 @@ PN532Adapter::~PN532Adapter() {
  * @return false otherwise.
  */
 bool PN532Adapter::begin() {
-    if (nfc == NULL) {
-        return false;
+    bool ret = false;
+    if (nfc != NULL) {
+        nfc->begin();
+        ret = (nfc->getFirmwareVersion() != 0);
     }
-    nfc->begin();
-    return nfc->getFirmwareVersion() != 0;
+    return ret;
 }
 
 /**
@@ -97,30 +98,29 @@ bool PN532Adapter::begin() {
  */
 bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
                             uint8_t* response, uint8_t &responseLength) {
-    if ((nfc == NULL) || (serial == NULL) || (apdu == NULL) || (response == NULL)) {
-        return false;
+    bool ret = false;
+    if ((nfc != NULL) && (serial != NULL) && (apdu != NULL) && (response != NULL)) {
+        bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), apduLength, response, &responseLength);
+
+        if (!success) {
+            serial->println(F("APDU exchange failed!"));
+        } else {
+            serial->print(F("APDU response ("));
+            serial->print(responseLength);
+            serial->println(F(" bytes):"));
+
+            for (uint8_t i = 0; i < responseLength; i++) {
+                serial->print(F("0x"));
+                if (response[i] < 16) serial->print(F("0"));
+                serial->print(response[i], HEX);
+                serial->print(F(" "));
+                if ((i + 1) % 16 == 0 && (i + 1) != responseLength) serial->println();
+            }
+            serial->println();
+            ret = true;
+        }
     }
-    bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), apduLength, response, &responseLength);
-
-    if (!success) {
-        serial->println(F("APDU exchange failed!"));
-        return false;
-    }
-
-    serial->print(F("APDU response ("));
-    serial->print(responseLength);
-    serial->println(F(" bytes):"));
-
-    for (uint8_t i = 0; i < responseLength; i++) {
-        serial->print(F("0x"));
-        if (response[i] < 16) serial->print(F("0"));
-        serial->print(response[i], HEX);
-        serial->print(F(" "));
-        if ((i + 1) % 16 == 0 && (i + 1) != responseLength) serial->println();
-    }
-    serial->println();
-
-    return true;
+    return ret;
 }
 
 /**
@@ -130,20 +130,20 @@ bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
  * @return false otherwise.
  */
 bool PN532Adapter::inListPassiveTarget() {
-    if (nfc == NULL) {
-        return false;
+    bool ret = false;
+    if (nfc != NULL) {
+        ret = nfc->inListPassiveTarget();
     }
-    return nfc->inListPassiveTarget();
+    return ret;
 }
 
 /**
  * @brief Reset the PN532 reader and configure it.
  */
 void PN532Adapter::resetReader() {
-    if (nfc == NULL) {
-        return;
+    if (nfc != NULL) {
+        nfc->SAMConfig();
     }
-    nfc->SAMConfig();
 }
 
 /**
@@ -153,74 +153,65 @@ void PN532Adapter::resetReader() {
  * @return false if the PN532 module was not detected.
  */
 bool PN532Adapter::printFirmwareVersion() {
-    if ((nfc == NULL) || (serial == NULL)) {
-        return false;
-    }
-
-    uint32_t versionData = nfc->getFirmwareVersion();
     bool result = false;
+    if ((nfc != NULL) && (serial != NULL)) {
+        uint32_t versionData = nfc->getFirmwareVersion();
 
-    if (versionData != false) {
-        uint8_t ic       = (versionData >> 24U) & 0xFFU;
-        uint8_t verMajor = (versionData >> 16U) & 0xFFU;
-        uint8_t verMinor = (versionData >>  8U) & 0xFFU;
-        uint8_t flags    =  versionData        & 0xFFU;
-        bool first       = true;
+        if (versionData != false) {
+            uint8_t ic       = (versionData >> 24U) & 0xFFU;
+            uint8_t verMajor = (versionData >> 16U) & 0xFFU;
+            uint8_t verMinor = (versionData >>  8U) & 0xFFU;
+            uint8_t flags    =  versionData        & 0xFFU;
+            bool first       = true;
 
-        serial->println(F("PN532 information"));
-        serial->print(F(" ├─ Raw firmware: 0x"));
-        serial->println(versionData, HEX);
+            serial->println(F("PN532 information"));
+            serial->print(F(" ├─ Raw firmware: 0x"));
+            serial->println(versionData, HEX);
 
-        serial->print(F(" ├─ IC Chip: "));
-        if (ic == 0x32U)
-        {
-            serial->println(F("PN532"));
-        }
-        else
-        {
-            serial->println(F("Unknown"));
-        }
-
-        serial->print(F(" ├─ Firmware: "));
-        serial->print(verMajor);
-        serial->print(F("."));
-        serial->println(verMinor);
-
-        serial->print(F(" └─ Features: "));
-        if ((flags & 0x01U) != 0U) {
-            serial->print(F("MIFARE"));
-            first = false;
-        }
-        if ((flags & 0x02U) != 0U) {
-            if (!first)
-            {
-                serial->print(F(" + "));
+            serial->print(F(" ├─ IC Chip: "));
+            if (ic == 0x32U) {
+                serial->println(F("PN532"));
+            } else {
+                serial->println(F("Unknown"));
             }
-            serial->print(F("ISO-DEP"));
-            first = false;
-        }
-        if ((flags & 0x04U) != 0U) {
-            if (!first)
-            {
-                serial->print(F(" + "));
+
+            serial->print(F(" ├─ Firmware: "));
+            serial->print(verMajor);
+            serial->print(F("."));
+            serial->println(verMinor);
+
+            serial->print(F(" └─ Features: "));
+            if ((flags & 0x01U) != 0U) {
+                serial->print(F("MIFARE"));
+                first = false;
             }
-            serial->print(F("FeliCa"));
-            first = false;
-        }
-        if (first) {
-            serial->print(F("Unknown"));
-        }
+            if ((flags & 0x02U) != 0U) {
+                if (!first) {
+                    serial->print(F(" + "));
+                }
+                serial->print(F("ISO-DEP"));
+                first = false;
+            }
+            if ((flags & 0x04U) != 0U) {
+                if (!first) {
+                    serial->print(F(" + "));
+                }
+                serial->print(F("FeliCa"));
+                first = false;
+            }
+            if (first) {
+                serial->print(F("Unknown"));
+            }
 
-        serial->print(F(" (0x"));
-        serial->print(flags, HEX);
-        serial->println(F(")"));
+            serial->print(F(" (0x"));
+            serial->print(flags, HEX);
+            serial->println(F(")"));
 
-        nfc->SAMConfig(); /* Configure the PN532 for normal operation */
-        result = true;
-    }
-    else {
-        serial->println(F("PN532 not found!"));
-        result = false;
+            nfc->SAMConfig(); /* Configure the PN532 for normal operation */
+            result = true;
+        } else {
+            serial->println(F("PN532 not found!"));
+        }
     }
 
     return result;
