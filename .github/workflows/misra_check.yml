@@ -31,5 +31,5 @@ jobs:
             --suppress=missingIncludeSystem \
             --force \
             -DSTATIC_ANALYSIS=1 \
-            -I ../test/stubs \
+            -I stubs \
             .
