@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['arduinoserialadapter_0',['ArduinoSerialAdapter',['../classArduinoSerialAdapter.html',1,'']]]
+  ['cryptnoxutils_0',['CryptnoxUtils',['../classCryptnoxUtils.html',1,'']]]
 ];
