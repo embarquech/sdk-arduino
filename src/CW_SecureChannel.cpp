@@ -1,5 +1,7 @@
 #include "CW_SecureChannel.h"
 #include "CryptnoxUtils.h"
+#include "CW_TrustedKeys.h"
+#include "uECC.h"
 
 /******************************************************************
  * Module-level constants
@@ -38,6 +40,25 @@ static_assert(APDU_HEADER_LEN + APDU_LC_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN <
 static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 245 bytes */
 static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 240 bytes */
 static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 224 bytes */
+
+/* Manufacturer certificate assembly buffer (used only during verifyCertificateChain). */
+static uint8_t s_mfCertBuf[CW_MANUF_CERT_MAX_BYTES];
+
+/* ASN.1 / DER OID patterns used for certificate parsing.
+ * K1_PUBKEY_OID  : secp256r1 SubjectPublicKeyInfo OID + BIT STRING header
+ *                  "2a8648ce3d030107" (OID) + "034200" (BIT STRING tag, len 66, 0 unused bits)
+ * ECDSA_SHA256_OID: ecdsa-with-SHA256 AlgorithmIdentifier OID + BIT STRING tag
+ *                  "06082a8648ce3d040302" (OID) + "03" (BIT STRING tag) */
+static const uint8_t K1_PUBKEY_OID[11U] = {
+    0x2aU, 0x86U, 0x48U, 0xceU, 0x3dU,
+    0x03U, 0x01U, 0x07U,               /* secp256r1 OID */
+    0x03U, 0x42U, 0x00U                /* BIT STRING: tag, len=66, unused=0 */
+};
+static const uint8_t ECDSA_SHA256_OID[11U] = {
+    0x06U, 0x08U,                      /* OID tag + length 8 */
+    0x2aU, 0x86U, 0x48U, 0xceU, 0x3dU, 0x04U, 0x03U, 0x02U, /* ecdsa-with-SHA256 */
+    0x03U                              /* BIT STRING tag */
+};
 
 /******************************************************************
  * Constructor
@@ -152,7 +173,16 @@ bool CW_SecureChannel::getCardCertificate(uint8_t* cardCertificate, uint8_t& car
                                 0x90U, 0x00U)) {
                 cardCertificateLength = getCardCertificateResponseLength - RESPONSE_STATUS_WORDS_IN_BYTES;
                 memcpy(cardCertificate, getCardCertificateResponse, cardCertificateLength);
-                ret = true;
+
+                /* Anti-replay: verify the card echoed our nonce at cert[1..8]. */
+                if ((cardCertificateLength > (1U + RANDOM_BYTES)) &&
+                    (cardCertificate[0] == 0x43U) &&
+                    (memcmp(cardCertificate + 1U, randomBytes, RANDOM_BYTES) == 0)) {
+                    ret = true;
+                } else {
+                    _logger.println(F("getCardCertificate: nonce mismatch or bad tag."));
+                    cardCertificateLength = 0U;
+                }
             } else {
                 _logger.println(F("getCardCertificate: bad SW."));
             }
@@ -461,7 +491,7 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     // cppcheck-suppress misra-config
-    if (!CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
+    if (!CryptnoxUtils::secureCompare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
         _logger.println(F("MAC mismatch."));
         return false;
     }
@@ -503,4 +533,292 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     }
 
     return ret;
+}
+
+/******************************************************************
+ * Certificate verification — static helpers
+ ******************************************************************/
+
+bool CW_SecureChannel::findBytes(const uint8_t* hay, uint16_t hayLen,
+                                 const uint8_t* needle, uint8_t needleLen,
+                                 uint16_t& pos) {
+    bool found = false;
+
+    if ((hay != NULL) && (needle != NULL) && (hayLen >= (uint16_t)needleLen)) {
+        uint16_t limit = hayLen - (uint16_t)needleLen;
+        for (uint16_t i = 0U; i <= limit; i++) {
+            bool match = true;
+            for (uint8_t j = 0U; j < needleLen; j++) {
+                if (hay[i + j] != needle[j]) {
+                    match = false;
+                    break;
+                }
+            }
+            if (match) {
+                pos = i;
+                found = true;
+                break;
+            }
+        }
+    }
+
+    return found;
+}
+
+bool CW_SecureChannel::parseDerSigToRaw(const uint8_t* der, uint8_t derLen,
+                                        uint8_t* raw64) {
+    bool ret = false;
+
+    if ((der != NULL) && (raw64 != NULL) && (derLen >= 6U) && (der[0] == 0x30U)) {
+        uint8_t pos = 2U;  /* skip SEQUENCE tag + length */
+
+        if (der[pos] == 0x02U) {
+            pos++;
+            uint8_t rLen = der[pos];
+            pos++;
+            if ((pos + rLen) <= derLen) {
+                const uint8_t* rPtr = der + pos;
+                pos += rLen;
+
+                if ((pos < derLen) && (der[pos] == 0x02U)) {
+                    pos++;
+                    uint8_t sLen = der[pos];
+                    pos++;
+                    if ((pos + sLen) <= derLen) {
+                        const uint8_t* sPtr = der + pos;
+
+                        memset(raw64, 0U, 64U);
+
+                        /* r: strip optional leading 0x00 padding byte */
+                        if ((rLen == 33U) && (rPtr[0] == 0x00U)) { rPtr++; rLen = 32U; }
+                        if (rLen <= 32U) {
+                            memcpy(raw64 + (32U - rLen), rPtr, rLen);
+                        }
+
+                        /* s: strip optional leading 0x00 padding byte */
+                        if ((sLen == 33U) && (sPtr[0] == 0x00U)) { sPtr++; sLen = 32U; }
+                        if (sLen <= 32U) {
+                            memcpy(raw64 + 32U + (32U - sLen), sPtr, sLen);
+                        }
+
+                        ret = true;
+                    }
+                }
+            }
+        }
+    }
+
+    return ret;
+}
+
+bool CW_SecureChannel::verifyEcdsaSha256(const uint8_t* pubKey64,
+                                         const uint8_t* message, uint16_t msgLen,
+                                         const uint8_t* derSig, uint8_t derSigLen) {
+    uint8_t hash[32U] = { 0U };
+    uint8_t rawSig[64U] = { 0U };
+
+    _crypto.sha256(message, msgLen, hash);
+
+    if (!parseDerSigToRaw(derSig, derSigLen, rawSig)) {
+        return false;
+    }
+
+    return (uECC_verify(pubKey64, hash, sizeof(hash), rawSig,
+                        uECC_secp256r1()) != 0);
+}
+
+/******************************************************************
+ * getManufacturerCertificate
+ ******************************************************************/
+
+bool CW_SecureChannel::getManufacturerCertificate(uint8_t* cert, uint16_t& certLen) {
+    bool ret = false;
+    certLen = 0U;
+
+    if (cert != NULL) {
+        /* Page 0: first 2 bytes of response data are big-endian total cert length. */
+        uint8_t apdu[5U] = { 0x80U, 0xF7U, 0x00U, 0x00U, 0x00U };
+        uint8_t response[130U];  /* 128 data + 2 SW */
+        uint8_t responseLen = sizeof(response);
+
+        if (_driver.sendAPDU(apdu, sizeof(apdu), response, responseLen) &&
+            checkStatusWord(response, responseLen, 0x90U, 0x00U)) {
+
+            uint8_t dataBytes = responseLen - 2U;  /* strip SW */
+
+            if (dataBytes >= 2U) {
+                uint16_t totalCertLen = ((uint16_t)response[0] << 8U) | response[1];
+
+                if (totalCertLen <= CW_MANUF_CERT_MAX_BYTES) {
+                    /* Copy cert bytes from this page (after the 2-byte length header). */
+                    uint8_t certInPage = dataBytes - 2U;
+                    if (certInPage > totalCertLen) { certInPage = (uint8_t)totalCertLen; }
+                    memcpy(cert, response + 2U, certInPage);
+                    certLen = certInPage;
+
+                    /* Fetch additional pages until the full cert is assembled. */
+                    uint8_t pageIdx = 1U;
+                    while ((certLen < totalCertLen) && (pageIdx < 8U)) {
+                        apdu[3] = pageIdx;
+                        responseLen = sizeof(response);
+
+                        if (!_driver.sendAPDU(apdu, sizeof(apdu), response, responseLen) ||
+                            !checkStatusWord(response, responseLen, 0x90U, 0x00U)) {
+                            break;
+                        }
+
+                        uint8_t pageData = responseLen - 2U;
+                        uint16_t remaining = totalCertLen - certLen;
+                        if (pageData > remaining) { pageData = (uint8_t)remaining; }
+
+                        if ((certLen + pageData) > CW_MANUF_CERT_MAX_BYTES) { break; }
+                        memcpy(cert + certLen, response, pageData);
+                        certLen += pageData;
+                        pageIdx++;
+                    }
+
+                    ret = (certLen == totalCertLen);
+                    if (!ret) {
+                        _logger.println(F("getManufacturerCertificate: incomplete."));
+                    }
+                } else {
+                    _logger.println(F("getManufacturerCertificate: cert too large."));
+                }
+            }
+        } else {
+            _logger.println(F("getManufacturerCertificate APDU failed."));
+        }
+    }
+
+    return ret;
+}
+
+/******************************************************************
+ * verifyCertificateChain
+ ******************************************************************/
+
+uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
+                                                  uint8_t cardCertLen) {
+    /* Minimum card cert: 1 tag + 8 nonce + 65 pubkey + 6 DER sig = 80 bytes */
+    if ((cardCert == NULL) || (cardCertLen < 80U) || (cardCert[0] != 0x43U)) {
+        _logger.println(F("verifyCert: invalid card cert."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    /* --- Step 1: Retrieve the manufacturer certificate from the card. --- */
+    uint16_t mfCertLen = 0U;
+    if (!getManufacturerCertificate(s_mfCertBuf, mfCertLen) || (mfCertLen < 20U)) {
+        _logger.println(F("verifyCert: failed to get mfr cert."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    /* --- Step 2: Extract device public key from manufacturer cert. ---
+     * Search for K1_PUBKEY_OID; the 65-byte uncompressed public key follows. */
+    uint16_t k1OidPos = 0U;
+    if (!findBytes(s_mfCertBuf, mfCertLen, K1_PUBKEY_OID, sizeof(K1_PUBKEY_OID), k1OidPos)) {
+        _logger.println(F("verifyCert: device pubkey OID not found."));
+        return CW_CERT_KEY_NOT_FOUND;
+    }
+
+    uint16_t pubkeyStart = k1OidPos + (uint16_t)sizeof(K1_PUBKEY_OID);
+    if ((pubkeyStart + 65U) > mfCertLen) {
+        _logger.println(F("verifyCert: device pubkey out of bounds."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    /* pubkey64 = X||Y (skip the 0x04 uncompressed-point prefix byte) */
+    const uint8_t* devicePubKey65 = s_mfCertBuf + pubkeyStart;
+    if (devicePubKey65[0] != 0x04U) {
+        _logger.println(F("verifyCert: unexpected pubkey prefix."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+    const uint8_t* devicePubKey64 = devicePubKey65 + 1U;  /* X||Y */
+
+    /* --- Step 3: Verify card certificate signature against device public key.
+     * Message = cardCert[0..73] (74 bytes: tag + nonce + uncompressed pubkey).
+     * Signature = cardCert[74..end] (DER ECDSA-SHA256). */
+    const uint8_t CARD_CERT_MSG_LEN = 74U;  /* 1 + 8 + 65 */
+    if (cardCertLen <= CARD_CERT_MSG_LEN) {
+        _logger.println(F("verifyCert: card cert too short for sig."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    const uint8_t* cardSig    = cardCert + CARD_CERT_MSG_LEN;
+    uint8_t        cardSigLen = cardCertLen - CARD_CERT_MSG_LEN;
+
+    if (!verifyEcdsaSha256(devicePubKey64,
+                           cardCert, CARD_CERT_MSG_LEN,
+                           cardSig, cardSigLen)) {
+        _logger.println(F("verifyCert: card cert sig INVALID."));
+        return CW_CERT_CARD_SIG_INVALID;
+    }
+    _logger.println(F("Card cert signature OK."));
+
+    /* --- Step 4: Verify manufacturer certificate against trusted CA key.
+     *
+     * Build the signed message following the Python SDK logic (authenticity.py):
+     *   message = mfCert[4 .. k1OidPos + sizeof(K1_PUBKEY_OID) + 65]
+     *   (i.e. skip 4-byte outer DER SEQUENCE header; stop at end of pubkey)
+     *
+     * Find the ECDSA-SHA256 BIT STRING that holds the CA's signature.
+     * Layout after ECDSA_SHA256_OID: [bit_string_len][0x00][DER sig…] */
+    const uint8_t MF_CERT_HEADER_SKIP = 4U;
+    if (k1OidPos <= MF_CERT_HEADER_SKIP) {
+        _logger.println(F("verifyCert: mfr cert structure error."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    const uint8_t* mfMsg    = s_mfCertBuf + MF_CERT_HEADER_SKIP;
+    uint16_t       mfMsgLen = (k1OidPos - MF_CERT_HEADER_SKIP) +
+                               (uint16_t)sizeof(K1_PUBKEY_OID) + 65U;
+
+    if ((MF_CERT_HEADER_SKIP + mfMsgLen) > mfCertLen) {
+        _logger.println(F("verifyCert: mfr cert msg out of bounds."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    /* Find signature in manufacturer cert */
+    uint16_t ecdsaOidPos = 0U;
+    if (!findBytes(s_mfCertBuf, mfCertLen,
+                   ECDSA_SHA256_OID, sizeof(ECDSA_SHA256_OID), ecdsaOidPos)) {
+        _logger.println(F("verifyCert: ECDSA-SHA256 OID not found in mfr cert."));
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    /* After the OID: [BIT_STRING_LEN][0x00][DER_SIG...] */
+    uint16_t sigOffset = ecdsaOidPos + (uint16_t)sizeof(ECDSA_SHA256_OID);
+    if ((sigOffset + 2U) > mfCertLen) {
+        return CW_CERT_FORMAT_ERROR;
+    }
+    uint8_t bitStringLen = s_mfCertBuf[sigOffset];
+    sigOffset++;                        /* skip the BIT STRING length byte */
+    if (s_mfCertBuf[sigOffset] == 0x00U) {
+        sigOffset++;                    /* skip the 0x00 "unused bits" byte */
+        bitStringLen = (bitStringLen > 1U) ? (bitStringLen - 1U) : 0U;
+    }
+    if ((sigOffset + bitStringLen) > mfCertLen) {
+        return CW_CERT_FORMAT_ERROR;
+    }
+
+    const uint8_t* mfSig    = s_mfCertBuf + sigOffset;
+    uint8_t        mfSigLen = bitStringLen;
+
+    /* Try each embedded trusted CA key */
+    bool mfVerified = false;
+    for (uint8_t i = 0U; i < CW_TRUSTED_CA_COUNT; i++) {
+        if (verifyEcdsaSha256(CW_TRUSTED_CA_KEYS[i],
+                              mfMsg, mfMsgLen,
+                              mfSig, mfSigLen)) {
+            mfVerified = true;
+            break;
+        }
+    }
+
+    if (!mfVerified) {
+        _logger.println(F("verifyCert: mfr cert sig INVALID — card NOT genuine."));
+        return CW_CERT_MANUF_SIG_INVALID;
+    }
+
+    _logger.println(F("Manufacturer cert signature OK. Card is genuine."));
+    return CW_CERT_OK;
 }

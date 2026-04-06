@@ -1,5 +1,6 @@
 #include "ArduinoCryptoProvider.h"
 #include "CryptnoxUtils.h"
+#include <SHA256.h>
 #include <SHA512.h>
 #include <AES.h>
 #include "uECC.h"
@@ -18,11 +19,20 @@ int ArduinoCryptoProvider::trngCallback(uint8_t* dest, unsigned size) {
     int ret = 0;
     if ((dest != NULL) && (size > 0U)) {
         for (unsigned i = 0U; i < size; i++) {
-            dest[i] = CryptnoxUtils::trng_byte();
+            dest[i] = CryptnoxUtils::trngByte();
         }
         ret = 1;
     }
     return ret;
+}
+
+/**
+ * @brief Compute SHA-256 over a contiguous data buffer.
+ */
+void ArduinoCryptoProvider::sha256(const uint8_t* data, size_t len, uint8_t* out) {
+    SHA256 sha;
+    sha.update(data, len);
+    sha.finalize(out, 32U);
 }
 
 /**
