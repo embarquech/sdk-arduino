@@ -24,6 +24,7 @@
 #include <CryptnoxWallet.h>
 #include <ArduinoLoggerAdapter.h>
 #include <ArduinoCryptoProvider.h>
+#include <CryptnoxUtils.h>
 
 /** @brief PN532 SPI slave-select pin. */
 #define PN532_SS_PIN  (10U)
@@ -52,6 +53,19 @@ CryptnoxWallet wallet(nfc, serialAdapter, cryptoProvider);
 
 /** @brief Expected HTTP 200 OK status code. */
 #define HTTP_OK 200
+
+/** @brief Maximum number of send-transaction attempts before giving up. */
+#define TX_MAX_RETRIES       3U
+/** @brief Delay in ms between send-transaction retry attempts. */
+#define TX_RETRY_DELAY_MS 2000U
+/** @brief Maximum WiFi reconnect poll iterations (each iteration waits 500 ms). */
+#define WIFI_RETRY_MAX      20U
+/** @brief Buffer size for a two-hex-char + NUL string used in byte-to-hex conversion. */
+#define HEX_CHAR_BUF_SIZE    3U
+/** @brief Number of leading zero hex characters in the ecrecover v-field padding. */
+#define ECRECOVER_V_PAD_CHARS 62U
+/** @brief Base value for Ethereum ecrecover v parameter (yParity=0 → v=27, yParity=1 → v=28). */
+#define ECRECOVER_V_BASE    27U
 
 /**
  * @brief Ethereum EIP-1559 transaction structure.
@@ -193,9 +207,9 @@ size_t encodeERC20Transfer(uint8_t* out) {
     out[1] = ERC20_TRANSFER_SEL_1; /* transfer(address,uint256) selector byte 1 */
     out[2] = ERC20_TRANSFER_SEL_2; /* transfer(address,uint256) selector byte 2 */
     out[3] = ERC20_TRANSFER_SEL_3; /* transfer(address,uint256) selector byte 3 */
-    memset(out+4,  0, 12); /* bytes  4-15: ABI word padding before address (12 zero bytes) */
+    CryptnoxUtils::secure_wipe(out+4,  12U); /* bytes  4-15: ABI word padding before address (12 zero bytes) */
     hexToBytes(ADDR_TO, out+16, 20); /* bytes 16-35: recipient address (20 bytes)           */
-    memset(out+36, 0, 28); /* bytes 36-63: ABI word padding before amount  (28 zero bytes) */
+    CryptnoxUtils::secure_wipe(out+36, 28U); /* bytes 36-63: ABI word padding before amount  (28 zero bytes) */
     out[ERC20_INDEX_OFFSET]   = (AMOUNT_USDC >> 24) & 0xFF;
     out[ERC20_INDEX_OFFSET+1] = (AMOUNT_USDC >> 16) & 0xFF;
     out[ERC20_INDEX_OFFSET+2] = (AMOUNT_USDC >> 8)  & 0xFF;
@@ -213,15 +227,15 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_sendRawTransaction\","
         "\"params\":[\"0x";
     static const char kSfx[] = "\"]}";
-    for (uint8_t attempt = 0U; attempt < 3U; attempt++) {
+    for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
         if (attempt != 0U) {
-            delay(2000U);
+            delay(TX_RETRY_DELAY_MS);
         }
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println(F("sendRawTx: WiFi not connected, reconnecting..."));
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             uint8_t wifiRetry = 0U;
-            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < 20U)) {
+            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < WIFI_RETRY_MAX)) {
                 delay(500U);
                 wifiRetry++;
             }
@@ -232,14 +246,28 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        client.beginRequest();
-        client.post("/");
+        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
+            Serial.println(F("sendRawTx: failed to connect to RPC host."));
+            continue;
+        }
+        int err = client.beginRequest();
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("sendRawTx: beginRequest failed."));
+            client.stop();
+            continue;
+        }
+        err = client.post("/");
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("sendRawTx: POST failed."));
+            client.stop();
+            continue;
+        }
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length",
             (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
         client.beginBody();
         client.print(kPfx);
-        char b[3];
+        char b[HEX_CHAR_BUF_SIZE];
         b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
         for (size_t i = 0; i < len; i++) {
             b[0] = hexC[raw[i] >> 4];  /* high nibble */
@@ -284,9 +312,9 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         hexBuf[pos++] = hexChars[hash[i] >> 4];
         hexBuf[pos++] = hexChars[hash[i] & 0x0f];
     }
-    /* v field: 31 zero bytes (62 '0' chars) then 1 value byte — filled per iteration */
+    /* v field: 31 zero bytes (ECRECOVER_V_PAD_CHARS '0' chars) then 1 value byte — filled per iteration */
     const uint8_t vOffset = pos;
-    for (uint8_t i = 0U; i < 62U; i++) {
+    for (uint8_t i = 0U; i < ECRECOVER_V_PAD_CHARS; i++) {
         hexBuf[pos++] = '0';
     }
     pos += 2U; /* placeholder for v byte */
@@ -311,15 +339,15 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     for (uint8_t yp = 0U; (yp <= 1U) && (result == YPARITY_UNKNOWN); yp++) {
         /* Patch v byte into last two chars of the v field.
          * Ethereum ecrecover: v=27 means yParity=0, v=28 means yParity=1. */
-        const uint8_t v = 27U + yp;
-        hexBuf[vOffset + 62] = hexChars[v >> 4];
-        hexBuf[vOffset + 63] = hexChars[v & 0x0f];
+        const uint8_t v = ECRECOVER_V_BASE + yp;
+        hexBuf[vOffset + ECRECOVER_V_PAD_CHARS]      = hexChars[(v & 0xFFU) >> 4U];
+        hexBuf[vOffset + ECRECOVER_V_PAD_CHARS + 1U] = hexChars[(v & 0xFFU) & 0x0FU];
 
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println(F("determineYParity: WiFi not connected, reconnecting..."));
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             uint8_t wifiRetry = 0U;
-            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < 20U)) {
+            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < WIFI_RETRY_MAX)) {
                 delay(500U);
                 wifiRetry++;
             }
@@ -330,8 +358,22 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        client.beginRequest();
-        client.post("/");
+        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
+            Serial.println(F("determineYParity: failed to connect to RPC host."));
+            continue;
+        }
+        int err = client.beginRequest();
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("determineYParity: beginRequest failed."));
+            client.stop();
+            continue;
+        }
+        err = client.post("/");
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("determineYParity: POST failed."));
+            client.stop();
+            continue;
+        }
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();
@@ -384,7 +426,7 @@ uint64_t fetchNonce() {
     static const char kSfx[] = "\",\"pending\"]}";
     const int bodyLen = (int)(sizeof(kPfx)-1) + 40 + (int)(sizeof(kSfx)-1);
 
-    for (uint8_t attempt = 0U; attempt < 3U; attempt++) {
+    for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
         if (attempt != 0U) {
             delay(1000U);
         }
@@ -392,7 +434,7 @@ uint64_t fetchNonce() {
             Serial.println(F("fetchNonce: WiFi not connected, reconnecting..."));
             WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
             uint8_t wifiRetry = 0U;
-            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < 20U)) {
+            while ((WiFi.status() != WL_CONNECTED) && (wifiRetry < WIFI_RETRY_MAX)) {
                 delay(500U);
                 wifiRetry++;
             }
@@ -403,8 +445,22 @@ uint64_t fetchNonce() {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        client.beginRequest();
-        client.post("/");
+        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
+            Serial.println(F("fetchNonce: failed to connect to RPC host."));
+            continue;
+        }
+        int err = client.beginRequest();
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("fetchNonce: beginRequest failed."));
+            client.stop();
+            continue;
+        }
+        err = client.post("/");
+        if (err != HTTP_SUCCESS) {
+            Serial.println(F("fetchNonce: POST failed."));
+            client.stop();
+            continue;
+        }
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();

@@ -77,6 +77,10 @@ public:
     /**
      * @brief Retrieve the card's ephemeral public key via GET CARD CERTIFICATE.
      *
+     * Sends a random challenge nonce to the card and stores it internally.
+     * The nonce echo check is performed inside verifyCertificateChain() to
+     * ensure replay protection is coupled with signature verification.
+     *
      * @param[out] cardCertificate       Buffer to receive the raw certificate bytes.
      * @param[out] cardCertificateLength Actual certificate length (bytes).
      * @return true on success, false otherwise.
@@ -149,14 +153,16 @@ public:
     /**
      * @brief Verify the full card certificate chain.
      *
-     * Performs two ECDSA-SHA256 verifications:
-     *  1. Card certificate signature against the device public key extracted
-     *     from the on-card manufacturer certificate.
-     *  2. Manufacturer certificate signature against the trusted Cryptnox CA
+     * Performs, in order:
+     *  1. Manufacturer certificate signature against the trusted Cryptnox CA
      *     public key embedded in CW_TrustedKeys.h.
+     *  2. Card certificate signature against the device public key extracted
+     *     from the manufacturer certificate.
+     *  3. Nonce echo check: confirms the card echoed the challenge sent by
+     *     getCardCertificate(), providing replay protection coupled with the
+     *     signature verification above.
      *
-     * The card certificate must already have been validated for nonce echo
-     * inside getCardCertificate() before calling this function.
+     * Must be called after getCardCertificate().
      *
      * @param[in] cardCert    Raw card certificate bytes (146 bytes).
      * @param[in] cardCertLen Length of cardCert.
@@ -222,6 +228,11 @@ private:
     CW_NfcTransport&  _driver; ///< NFC transport for APDU exchange.
     CW_Logger&        _logger; ///< Logging interface.
     CW_CryptoProvider& _crypto; ///< Crypto operations (AES, SHA, ECDH, RNG).
+
+#if CW_VERIFY_CERT
+    /** @brief Nonce sent in the last getCardCertificate() call; checked in verifyCertificateChain(). */
+    uint8_t _lastNonce[CW_CERT_NONCE_SIZE];
+#endif /* CW_VERIFY_CERT (nonce member) */
 
 #if CW_VERIFY_CERT
     /**

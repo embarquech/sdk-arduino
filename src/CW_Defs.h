@@ -56,6 +56,9 @@
 #define CW_DER_TAG_SEQUENCE           (0x30U)
 #define CW_DER_TAG_INTEGER            (0x02U)
 
+/* Certificate verification constants */
+#define CW_CERT_NONCE_SIZE            (8U)     /**< Challenge nonce length in bytes */
+
 /* Certificate verification result codes */
 #define CW_CERT_OK                    (0x00U)  /**< Certificate chain verified */
 #define CW_CERT_FORMAT_ERROR          (0x10U)  /**< Malformed certificate data */
