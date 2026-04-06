@@ -1,6 +1,8 @@
 #include "CW_SecureChannel.h"
 #include "CryptnoxUtils.h"
+#if CW_VERIFY_CERT
 #include "CW_TrustedKeys.h"
+#endif
 #include "uECC.h"
 
 /******************************************************************
@@ -41,6 +43,7 @@ static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 245 bytes */
 static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 240 bytes */
 static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 224 bytes */
 
+#if CW_VERIFY_CERT
 /* Manufacturer certificate assembly buffer (used only during verifyCertificateChain). */
 static uint8_t s_mfCertBuf[CW_MANUF_CERT_MAX_BYTES];
 
@@ -59,6 +62,7 @@ static const uint8_t ECDSA_SHA256_OID[11U] = {
     0x2aU, 0x86U, 0x48U, 0xceU, 0x3dU, 0x04U, 0x03U, 0x02U, /* ecdsa-with-SHA256 */
     0x03U                              /* BIT STRING tag */
 };
+#endif /* CW_VERIFY_CERT */
 
 /******************************************************************
  * Constructor
@@ -99,7 +103,9 @@ bool CW_SecureChannel::checkStatusWord(const uint8_t* response, uint8_t response
     bool ret = false;
 
     if ((response == NULL) || (responseLength < 2U)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("checkStatusWord: response too short."));
+#endif
     }
     else {
         uint8_t sw1 = response[responseLength - 2U];
@@ -109,12 +115,14 @@ bool CW_SecureChannel::checkStatusWord(const uint8_t* response, uint8_t response
             ret = true;
         }
         else {
+#if CW_DEBUG_LOGGING
             _logger.print(F("SW: 0x"));
-            if (sw1 < 16U) _logger.print(F("0"));
+            if (sw1 < 16U) { _logger.print(F("0")); }
             _logger.print(sw1, HEX);
             _logger.print(F(" 0x"));
-            if (sw2 < 16U) _logger.print(F("0"));
+            if (sw2 < 16U) { _logger.print(F("0")); }
             _logger.println(sw2, HEX);
+#endif
         }
     }
 
@@ -141,10 +149,14 @@ bool CW_SecureChannel::selectApdu() {
         if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
             ret = true;
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("Select APDU failed."));
+#endif
         }
     } else {
+#if CW_DEBUG_LOGGING
         _logger.println(F("APDU select failed."));
+#endif
     }
 
     return ret;
@@ -180,14 +192,20 @@ bool CW_SecureChannel::getCardCertificate(uint8_t* cardCertificate, uint8_t& car
                     (memcmp(cardCertificate + 1U, randomBytes, RANDOM_BYTES) == 0)) {
                     ret = true;
                 } else {
+#if CW_DEBUG_LOGGING
                     _logger.println(F("getCardCertificate: nonce mismatch or bad tag."));
+#endif
                     cardCertificateLength = 0U;
                 }
             } else {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("getCardCertificate: bad SW."));
+#endif
             }
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("getCardCertificate APDU failed."));
+#endif
         }
     }
 
@@ -229,7 +247,9 @@ bool CW_SecureChannel::openSecureChannel(uint8_t* salt,
     bool ret = false;
 
     if (!_crypto.makeKey(sessionPublicKey, sessionPrivateKey, sessionCurve)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("ECC key generation failed."));
+#endif
     }
     else {
         uint8_t opcApduHeader[] = {
@@ -249,13 +269,19 @@ bool CW_SecureChannel::openSecureChannel(uint8_t* salt,
                     memcpy(salt, response, OPENSECURECHANNEL_SALT_IN_BYTES);
                     ret = true;
                 } else {
+#if CW_DEBUG_LOGGING
                     _logger.println(F("OpenSecureChannel: unexpected response size."));
+#endif
                 }
             } else {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("OpenSecureChannel: bad SW."));
+#endif
             }
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("OpenSecureChannel APDU failed."));
+#endif
         }
     }
 
@@ -272,7 +298,9 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
     uint8_t sharedSecret[32U] = { 0U };
 
     if (!_crypto.ecdh(cardEphemeralPubKey, clientPrivateKey, sharedSecret, sessionCurve)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("ECDH failed."));
+#endif
     }
     else {
         uint8_t concat[32U + sizeof(COMMON_PAIRING_DATA) - 1U + 32U] = { 0U };
@@ -296,7 +324,9 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
         uint8_t RNG_data[32U] = { 0U };
         // cppcheck-suppress misra-config
         if (!_crypto.random(RNG_data, sizeof(RNG_data))) {
+#if CW_DEBUG_LOGGING
             _logger.println(F("RNG failed."));
+#endif
             memset(sharedSecret, 0U, sizeof(sharedSecret));
             memset(sha512Output, 0U, sizeof(sha512Output));
             memset(concat, 0U, sizeof(concat));
@@ -360,13 +390,19 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
                     memcpy(session.iv, response, CW_IV_SIZE);
                     ret = true;
                 } else {
+#if CW_DEBUG_LOGGING
                     _logger.println(F("MutualAuth: unexpected response size."));
+#endif
                 }
             } else {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("MutualAuth: bad SW."));
+#endif
             }
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("MutualAuth APDU failed."));
+#endif
         }
 
         /* Secure cleanup */
@@ -398,7 +434,9 @@ bool CW_SecureChannel::aesCbcEncrypt(CW_SecureSession& session,
 
     uint16_t macDataLength = apduLength + sizeof(macApdu) + encryptedLength;
     if (macDataLength > MAX_MAC_DATA_LEN) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: MAC data length exceeds buffer."));
+#endif
         return false;
     }
 
@@ -423,7 +461,9 @@ bool CW_SecureChannel::aesCbcEncrypt(CW_SecureSession& session,
     const uint8_t lc = (uint8_t)lcValue;
     uint16_t sendApduLength = apduLength + APDU_LC_LEN + sizeof(macValue) + encryptedLength;
     if (sendApduLength > SEND_APDU_MAX_LEN) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Send APDU length exceeds buffer."));
+#endif
         return false;
     }
 
@@ -446,10 +486,14 @@ bool CW_SecureChannel::aesCbcEncrypt(CW_SecureSession& session,
             ret = aesCbcDecrypt(session, response, responseLength, macValue,
                                 decryptedOutput, decryptedOutputLength);
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("Secured APDU: bad SW."));
+#endif
         }
     } else {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Secured APDU failed."));
+#endif
     }
 
     return ret;
@@ -473,7 +517,9 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     /* Verify MAC: AES-CBC-MAC over [length_header(16)] || [all_ciphertext] */
     size_t macInputLen = AES_BLOCK_SIZE + cipherLen;
     if (macInputLen > sizeof(s_macBuf)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Response too large for MAC verification."));
+#endif
         return false;
     }
 
@@ -492,7 +538,9 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
 
     // cppcheck-suppress misra-config
     if (!CryptnoxUtils::secureCompare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("MAC mismatch."));
+#endif
         return false;
     }
 
@@ -504,10 +552,14 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     bool ret = false;
 
     if (decryptedDataLength < 2U) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Decoded data too short."));
+#endif
     }
     else if (decryptedDataLength > sizeof(s_dataBuf)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Decoded data length exceeds buffer."));
+#endif
     }
     else {
         uint8_t innerSW1 = s_dataBuf[decryptedDataLength - 2U];
@@ -515,12 +567,14 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
         uint16_t payloadLength = decryptedDataLength - 2U;
 
         if ((innerSW1 != 0x90U) || (innerSW2 != 0x00U)) {
+#if CW_DEBUG_LOGGING
             _logger.print(F("Card error SW: 0x"));
-            if (innerSW1 < 0x10U) _logger.print(F("0"));
+            if (innerSW1 < 0x10U) { _logger.print(F("0")); }
             _logger.print(innerSW1, HEX);
             _logger.print(F(" 0x"));
-            if (innerSW2 < 0x10U) _logger.print(F("0"));
+            if (innerSW2 < 0x10U) { _logger.print(F("0")); }
             _logger.println(innerSW2, HEX);
+#endif
         }
         else {
             ret = true;
@@ -536,8 +590,10 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
 }
 
 /******************************************************************
- * Certificate verification — static helpers
+ * Certificate verification — static helpers (CW_VERIFY_CERT only)
  ******************************************************************/
+
+#if CW_VERIFY_CERT
 
 bool CW_SecureChannel::findBytes(const uint8_t* hay, uint16_t hayLen,
                                  const uint8_t* needle, uint8_t needleLen,
@@ -679,14 +735,20 @@ bool CW_SecureChannel::getManufacturerCertificate(uint8_t* cert, uint16_t& certL
 
                     ret = (certLen == totalCertLen);
                     if (!ret) {
+#if CW_DEBUG_LOGGING
                         _logger.println(F("getManufacturerCertificate: incomplete."));
+#endif
                     }
                 } else {
+#if CW_DEBUG_LOGGING
                     _logger.println(F("getManufacturerCertificate: cert too large."));
+#endif
                 }
             }
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("getManufacturerCertificate APDU failed."));
+#endif
         }
     }
 
@@ -701,14 +763,18 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
                                                   uint8_t cardCertLen) {
     /* Minimum card cert: 1 tag + 8 nonce + 65 pubkey + 6 DER sig = 80 bytes */
     if ((cardCert == NULL) || (cardCertLen < 80U) || (cardCert[0] != 0x43U)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: invalid card cert."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
     /* --- Step 1: Retrieve the manufacturer certificate from the card. --- */
     uint16_t mfCertLen = 0U;
     if (!getManufacturerCertificate(s_mfCertBuf, mfCertLen) || (mfCertLen < 20U)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: failed to get mfr cert."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
@@ -716,20 +782,26 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
      * Search for K1_PUBKEY_OID; the 65-byte uncompressed public key follows. */
     uint16_t k1OidPos = 0U;
     if (!findBytes(s_mfCertBuf, mfCertLen, K1_PUBKEY_OID, sizeof(K1_PUBKEY_OID), k1OidPos)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: device pubkey OID not found."));
+#endif
         return CW_CERT_KEY_NOT_FOUND;
     }
 
     uint16_t pubkeyStart = k1OidPos + (uint16_t)sizeof(K1_PUBKEY_OID);
     if ((pubkeyStart + 65U) > mfCertLen) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: device pubkey out of bounds."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
     /* pubkey64 = X||Y (skip the 0x04 uncompressed-point prefix byte) */
     const uint8_t* devicePubKey65 = s_mfCertBuf + pubkeyStart;
     if (devicePubKey65[0] != 0x04U) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: unexpected pubkey prefix."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
     const uint8_t* devicePubKey64 = devicePubKey65 + 1U;  /* X||Y */
@@ -739,7 +811,9 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
      * Signature = cardCert[74..end] (DER ECDSA-SHA256). */
     const uint8_t CARD_CERT_MSG_LEN = 74U;  /* 1 + 8 + 65 */
     if (cardCertLen <= CARD_CERT_MSG_LEN) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: card cert too short for sig."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
@@ -749,10 +823,14 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
     if (!verifyEcdsaSha256(devicePubKey64,
                            cardCert, CARD_CERT_MSG_LEN,
                            cardSig, cardSigLen)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: card cert sig INVALID."));
+#endif
         return CW_CERT_CARD_SIG_INVALID;
     }
+#if CW_DEBUG_LOGGING
     _logger.println(F("Card cert signature OK."));
+#endif
 
     /* --- Step 4: Verify manufacturer certificate against trusted CA key.
      *
@@ -764,7 +842,9 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
      * Layout after ECDSA_SHA256_OID: [bit_string_len][0x00][DER sig…] */
     const uint8_t MF_CERT_HEADER_SKIP = 4U;
     if (k1OidPos <= MF_CERT_HEADER_SKIP) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: mfr cert structure error."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
@@ -773,7 +853,9 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
                                (uint16_t)sizeof(K1_PUBKEY_OID) + 65U;
 
     if ((MF_CERT_HEADER_SKIP + mfMsgLen) > mfCertLen) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: mfr cert msg out of bounds."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
@@ -781,7 +863,9 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
     uint16_t ecdsaOidPos = 0U;
     if (!findBytes(s_mfCertBuf, mfCertLen,
                    ECDSA_SHA256_OID, sizeof(ECDSA_SHA256_OID), ecdsaOidPos)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: ECDSA-SHA256 OID not found in mfr cert."));
+#endif
         return CW_CERT_FORMAT_ERROR;
     }
 
@@ -815,10 +899,16 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
     }
 
     if (!mfVerified) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("verifyCert: mfr cert sig INVALID — card NOT genuine."));
+#endif
         return CW_CERT_MANUF_SIG_INVALID;
     }
 
+#if CW_DEBUG_LOGGING
     _logger.println(F("Manufacturer cert signature OK. Card is genuine."));
+#endif
     return CW_CERT_OK;
 }
+
+#endif /* CW_VERIFY_CERT */

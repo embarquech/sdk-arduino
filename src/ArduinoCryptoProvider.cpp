@@ -1,6 +1,8 @@
 #include "ArduinoCryptoProvider.h"
 #include "CryptnoxUtils.h"
+#if CW_VERIFY_CERT
 #include <SHA256.h>
+#endif
 #include <SHA512.h>
 #include <AES.h>
 #include "uECC.h"
@@ -30,9 +32,13 @@ int ArduinoCryptoProvider::trngCallback(uint8_t* dest, unsigned size) {
  * @brief Compute SHA-256 over a contiguous data buffer.
  */
 void ArduinoCryptoProvider::sha256(const uint8_t* data, size_t len, uint8_t* out) {
+#if CW_VERIFY_CERT
     SHA256 sha;
     sha.update(data, len);
     sha.finalize(out, 32U);
+#else
+    (void)data; (void)len; (void)out; /* SHA-256 disabled: CW_VERIFY_CERT=0 */
+#endif
 }
 
 /**

@@ -132,6 +132,39 @@ public:
                               const uECC_Curve_t* sessionCurve,
                               uint8_t* cardEphemeralPubKey);
 
+#if CW_VERIFY_CERT
+    /**
+     * @brief Retrieve the manufacturer certificate stored in card flash.
+     *
+     * Sends APDU 0x80 0xF7 with pagination until the full certificate is
+     * received.  The first response contains a 2-byte big-endian total-length
+     * prefix; subsequent pages are raw continuation bytes.
+     *
+     * @param[out] cert    Buffer to receive the raw DER certificate bytes.
+     * @param[out] certLen Actual certificate length written.
+     * @return true on success, false if APDU fails or buffer too small.
+     */
+    bool getManufacturerCertificate(uint8_t* cert, uint16_t& certLen);
+
+    /**
+     * @brief Verify the full card certificate chain.
+     *
+     * Performs two ECDSA-SHA256 verifications:
+     *  1. Card certificate signature against the device public key extracted
+     *     from the on-card manufacturer certificate.
+     *  2. Manufacturer certificate signature against the trusted Cryptnox CA
+     *     public key embedded in CW_TrustedKeys.h.
+     *
+     * The card certificate must already have been validated for nonce echo
+     * inside getCardCertificate() before calling this function.
+     *
+     * @param[in] cardCert    Raw card certificate bytes (146 bytes).
+     * @param[in] cardCertLen Length of cardCert.
+     * @return CW_CERT_OK (0) on success, or a CW_CERT_* error code otherwise.
+     */
+    uint8_t verifyCertificateChain(const uint8_t* cardCert, uint8_t cardCertLen);
+#endif /* CW_VERIFY_CERT */
+
     /**
      * @brief AES-CBC encrypt payload, compute MAC, send APDU, and decrypt response.
      *
@@ -189,6 +222,44 @@ private:
     CW_NfcTransport&  _driver; ///< NFC transport for APDU exchange.
     CW_Logger&        _logger; ///< Logging interface.
     CW_CryptoProvider& _crypto; ///< Crypto operations (AES, SHA, ECDH, RNG).
+
+#if CW_VERIFY_CERT
+    /**
+     * @brief Search for a byte pattern inside a buffer.
+     * @param hay       Haystack buffer.
+     * @param hayLen    Haystack length.
+     * @param needle    Pattern to find.
+     * @param needleLen Pattern length.
+     * @param pos       Output: position of first match.
+     * @return true if found, false otherwise.
+     */
+    static bool findBytes(const uint8_t* hay, uint16_t hayLen,
+                          const uint8_t* needle, uint8_t needleLen,
+                          uint16_t& pos);
+
+    /**
+     * @brief Parse DER-encoded ECDSA signature into raw 64-byte r||s form.
+     * @param der     DER input buffer.
+     * @param derLen  DER length.
+     * @param raw64   64-byte output (r[32] || s[32]).
+     * @return true on success.
+     */
+    static bool parseDerSigToRaw(const uint8_t* der, uint8_t derLen,
+                                 uint8_t* raw64);
+
+    /**
+     * @brief Verify an ECDSA-SHA256 signature over an arbitrary message.
+     * @param pubKey64  Verifier public key, 64 bytes (X||Y, no 0x04 prefix).
+     * @param message   Message bytes.
+     * @param msgLen    Message length.
+     * @param derSig    DER-encoded ECDSA signature.
+     * @param derSigLen DER signature length.
+     * @return true if the signature is valid.
+     */
+    bool verifyEcdsaSha256(const uint8_t* pubKey64,
+                           const uint8_t* message, uint16_t msgLen,
+                           const uint8_t* derSig, uint8_t derSigLen);
+#endif /* CW_VERIFY_CERT */
 };
 
 #endif // CW_SECURECHANNEL_H
