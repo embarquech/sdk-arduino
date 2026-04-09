@@ -210,23 +210,28 @@ size_t encodeERC20Transfer(uint8_t* out) {
     CryptnoxUtils::secure_wipe(out+4,  12U); /* bytes  4-15: ABI word padding before address (12 zero bytes) */
     hexToBytes(ADDR_TO, out+16, 20); /* bytes 16-35: recipient address (20 bytes)           */
     CryptnoxUtils::secure_wipe(out+36, 28U); /* bytes 36-63: ABI word padding before amount  (28 zero bytes) */
-    out[ERC20_INDEX_OFFSET]   = (AMOUNT_USDC >> 24) & 0xFF;
-    out[ERC20_INDEX_OFFSET+1] = (AMOUNT_USDC >> 16) & 0xFF;
-    out[ERC20_INDEX_OFFSET+2] = (AMOUNT_USDC >> 8)  & 0xFF;
-    out[ERC20_INDEX_OFFSET+3] =  AMOUNT_USDC        & 0xFF;
+    out[ERC20_INDEX_OFFSET]   = (uint8_t)((AMOUNT_USDC >> 24U) & 0xFFU);
+    out[ERC20_INDEX_OFFSET+1] = (uint8_t)((AMOUNT_USDC >> 16U) & 0xFFU);
+    out[ERC20_INDEX_OFFSET+2] = (uint8_t)((AMOUNT_USDC >> 8U)  & 0xFFU);
+    out[ERC20_INDEX_OFFSET+3] = (uint8_t)( AMOUNT_USDC         & 0xFFU);
     return 68;
 }
 
 /**
  * @brief Send a raw signed transaction via JSON-RPC.
- * @param rawHex Hex-encoded signed transaction (without 0x prefix)
+ * @param raw Signed transaction bytes
+ * @param len Length of raw transaction in bytes
  */
 void sendRawTx(const uint8_t* raw, size_t len) {
-    static const char hexC[] = "0123456789abcdef";
-    static const char kPfx[] =
+    /* Lookup table for nibble-to-hex-character conversion. */
+    static const char hexChars[] = "0123456789abcdef";
+    /* Fixed opening of the JSON-RPC body, up to and including the "0x" prefix
+     * where the hex-encoded transaction bytes will be inserted. */
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_sendRawTransaction\","
         "\"params\":[\"0x";
-    static const char kSfx[] = "\"]}";
+    /* Fixed closing of the JSON-RPC body that follows the hex transaction bytes. */
+    static const char requestSuffix[] = "\"]}";
     for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
         if (attempt != 0U) {
             delay(TX_RETRY_DELAY_MS);
@@ -246,43 +251,35 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("sendRawTx: failed to connect to RPC host."));
-            continue;
-        }
-        int err = client.beginRequest();
-        if (err != HTTP_SUCCESS) {
-            Serial.println(F("sendRawTx: beginRequest failed."));
-            client.stop();
-            continue;
-        }
-        err = client.post("/");
+        client.beginRequest();
+        int err = client.post("/");
         if (err != HTTP_SUCCESS) {
             Serial.println(F("sendRawTx: POST failed."));
             client.stop();
             continue;
         }
+        /* Content-Length = prefix + 2 hex chars per raw byte + suffix. */
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length",
-            (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
+            (int)(sizeof(requestPrefix)-1) + 2*(int)len + (int)(sizeof(requestSuffix)-1));
         client.beginBody();
-        client.print(kPfx);
-        char b[HEX_CHAR_BUF_SIZE];
-        b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
+        client.print(requestPrefix);
+        /* Encode each raw transaction byte as two hex characters and stream it
+         * directly to the HTTP client, avoiding a large intermediate buffer. */
+        char byteHexStr[HEX_CHAR_BUF_SIZE];
+        byteHexStr[2] = '\0';
         for (size_t i = 0; i < len; i++) {
-            b[0] = hexC[raw[i] >> 4];  /* high nibble */
-            b[1] = hexC[raw[i] & 0x0f]; /* low nibble */
-            client.print(b);
+            byteHexStr[0] = hexChars[raw[i] >> 4];   /* high nibble */
+            byteHexStr[1] = hexChars[raw[i] & 0x0f]; /* low nibble  */
+            client.print(byteHexStr);
         }
-        client.print(kSfx);
+        client.print(requestSuffix);
         client.endRequest();
         int status = client.responseStatusCode();
-        Serial.print(F("Status:"));
-        Serial.println(status);
-        bool txSent = (status > 0);
-        if (txSent) {
-            Serial.println(client.responseBody());
-        }
+        String responseBody = client.responseBody();
+        bool statusOk = (status == HTTP_OK);
+        bool noJsonError = (responseBody.indexOf("\"error\"") == -1);
+        bool txSent = statusOk && noJsonError;
         client.stop();
         if (txSent) {
             break;
@@ -305,15 +302,15 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     static const char hexChars[] = "0123456789abcdef";
     /* ecrecover calldata: "0x" + hash(64) + v(64) + r(64) + s(64) = 258 chars + NUL */
     char hexBuf[260];
-    uint8_t pos = 0U;
+    uint16_t pos = 0U;
     hexBuf[pos++] = '0';
     hexBuf[pos++] = 'x';
     for (uint8_t i = 0U; i < 32U; i++) {
         hexBuf[pos++] = hexChars[hash[i] >> 4];
         hexBuf[pos++] = hexChars[hash[i] & 0x0f];
     }
-    /* v field: 31 zero bytes (ECRECOVER_V_PAD_CHARS '0' chars) then 1 value byte — filled per iteration */
-    const uint8_t vOffset = pos;
+    /* v field: ECRECOVER_V_PAD_CHARS zero chars, then 1 value byte — filled per iteration */
+    const uint16_t vOffset = pos;
     for (uint8_t i = 0U; i < ECRECOVER_V_PAD_CHARS; i++) {
         hexBuf[pos++] = '0';
     }
@@ -328,12 +325,12 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     }
     hexBuf[pos] = '\0'; /* pos == 258 */
 
-    static const char kPrefix[] =
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\","
         "\"params\":[{\"to\":\"0x0000000000000000000000000000000000000001\","
         "\"data\":\"";
-    static const char kSuffix[] = "\"},\"latest\"]}";
-    const int bodyLen = (int)(sizeof(kPrefix) - 1) + 258 + (int)(sizeof(kSuffix) - 1);
+    static const char requestSuffix[] = "\"},\"latest\"]}";
+    const int bodyLen = (int)(sizeof(requestPrefix) - 1) + 258 + (int)(sizeof(requestSuffix) - 1);
 
     uint8_t result = YPARITY_UNKNOWN;
     for (uint8_t yp = 0U; (yp <= 1U) && (result == YPARITY_UNKNOWN); yp++) {
@@ -358,17 +355,8 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("determineYParity: failed to connect to RPC host."));
-            continue;
-        }
-        int err = client.beginRequest();
-        if (err != HTTP_SUCCESS) {
-            Serial.println(F("determineYParity: beginRequest failed."));
-            client.stop();
-            continue;
-        }
-        err = client.post("/");
+        client.beginRequest();
+        int err = client.post("/");
         if (err != HTTP_SUCCESS) {
             Serial.println(F("determineYParity: POST failed."));
             client.stop();
@@ -377,37 +365,27 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();
-        client.print(kPrefix);
+        client.print(requestPrefix);
         client.print(hexBuf);
-        client.print(kSuffix);
+        client.print(requestSuffix);
         client.endRequest();
 
         int status = client.responseStatusCode();
-        Serial.print(yp);
-        Serial.print(':');
-        Serial.println(status);
+        String response = client.responseBody(); /* consume response body */
+        client.stop();
         if (status != HTTP_OK) {
-            client.stop();
             continue;
         }
-        String response = client.responseBody();
-        client.stop();
         int resultIdx = response.indexOf("\"result\"");
         if (resultIdx < 0) {
-            Serial.println(F("ecrecover: no result field in response"));
             continue;
         }
         int hexIdx = response.indexOf("0x", resultIdx);
         if (hexIdx < 0) {
-            Serial.println(F("ecrecover: no hex value in result"));
             continue;
         }
         /* ecrecover returns 32-byte word; address = last 20 bytes = last 40 hex chars */
         String recovered = response.substring(hexIdx + 26, hexIdx + 66);
-        Serial.print(F("got:"));
-        Serial.println(recovered);
-        Serial.print(F("exp:"));
-        Serial.println(ADDR_FROM);
         if (recovered.equalsIgnoreCase(ADDR_FROM)) {
             result = yp;
         }
@@ -417,16 +395,18 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
 
 /**
  * @brief Fetch the current nonce for ADDR_FROM via eth_getTransactionCount.
- * @return Current nonce (pending), or 0 on failure after retries.
+ * @param nonce Output: nonce value on success (note: 0 is a valid nonce for a fresh address).
+ * @return 0 on success, 1 on failure.
  */
-uint64_t fetchNonce() {
-    static const char kPfx[] =
+uint8_t fetchNonce(uint64_t* nonce) {
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getTransactionCount\","
         "\"params\":[\"0x";
-    static const char kSfx[] = "\",\"pending\"]}";
-    const int bodyLen = (int)(sizeof(kPfx)-1) + 40 + (int)(sizeof(kSfx)-1);
+    static const char requestSuffix[] = "\",\"pending\"]}";
+    const int bodyLen = (int)(sizeof(requestPrefix)-1) + 40 + (int)(sizeof(requestSuffix)-1);
 
-    for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
+    uint8_t result = 1U;
+    for (uint8_t attempt = 0U; (attempt < TX_MAX_RETRIES) && (result != 0U); attempt++) {
         if (attempt != 0U) {
             delay(1000U);
         }
@@ -445,17 +425,8 @@ uint64_t fetchNonce() {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("fetchNonce: failed to connect to RPC host."));
-            continue;
-        }
-        int err = client.beginRequest();
-        if (err != HTTP_SUCCESS) {
-            Serial.println(F("fetchNonce: beginRequest failed."));
-            client.stop();
-            continue;
-        }
-        err = client.post("/");
+        client.beginRequest();
+        int err = client.post("/");
         if (err != HTTP_SUCCESS) {
             Serial.println(F("fetchNonce: POST failed."));
             client.stop();
@@ -464,40 +435,30 @@ uint64_t fetchNonce() {
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();
-        client.print(kPfx);
+        client.print(requestPrefix);
         client.print(ADDR_FROM);
-        client.print(kSfx);
+        client.print(requestSuffix);
         client.endRequest();
 
         int status = client.responseStatusCode();
-        Serial.print(F("Nonce status:"));
-        Serial.println(status);
-        if (status != HTTP_OK) {
-            client.stop();
-            continue;
-        }
         String resp = client.responseBody();
         client.stop();
-        int ri = resp.indexOf("\"result\"");
-        if (ri < 0) {
-            continue;
+        if (status == HTTP_OK) {
+            int ri = resp.indexOf("\"result\"");
+            int xi = (ri >= 0) ? resp.indexOf("0x", ri) : -1;
+            if (xi >= 0) {
+                uint64_t parsed = 0U;
+                for (int i = xi + 2; i < (int)resp.length(); i++) {
+                    char c = resp[i];
+                    if (!((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F'))) break;
+                    parsed = (parsed << 4) | fromHex(c);
+                }
+                *nonce = parsed;
+                result = 0U;
+            }
         }
-        int xi = resp.indexOf("0x", ri);
-        if (xi < 0) {
-            continue;
-        }
-        uint64_t nonce = 0;
-        for (int i = xi + 2; i < (int)resp.length(); i++) {
-            char c = resp[i];
-            if (!((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F'))) break;
-            nonce = (nonce << 4) | fromHex(c);
-        }
-        Serial.print(F("Nonce:"));
-        Serial.println((uint32_t)nonce);
-        return nonce;
     }
-    Serial.println(F("fetchNonce failed!"));
-    return 0;
+    return result;
 }
 
 /**
@@ -516,13 +477,18 @@ void setup() {
     Serial.println(F("PN532 OK"));
 
     /* Connect to WiFi */
-    Serial.print("Connecting to WiFi...");
+    Serial.print(F("Connecting to WiFi"));
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
+    uint8_t retries = 20U;
+    while ((WiFi.status() != WL_CONNECTED) && retries--) {
         delay(500U);
-        Serial.print(".");
+        Serial.print(F("."));
     }
-    Serial.println("OK");
+    Serial.println();
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println(F("WiFi failed!"));
+        while(1);
+    }
     delay(2000); /* Allow network stack to stabilise before first SSL connection */
 
     /* Build ERC-20 calldata */
@@ -531,7 +497,12 @@ void setup() {
 
     /* Build unsigned EIP-1559 transaction */
     Tx2 tx2;
-    tx2.nonce              = fetchNonce();
+    uint64_t fetchedNonce = 0U;
+    if (fetchNonce(&fetchedNonce) != 0U) {
+        Serial.println(F("fetchNonce failed! Halting."));
+        while(1);
+    }
+    tx2.nonce              = fetchedNonce;
     tx2.maxPriorityFeePerGas = MAX_PRIORITY_FEE;
     tx2.maxFeePerGas       = MAX_FEE;
     tx2.gasLimit           = GAS_LIMIT_ERC20;
@@ -557,8 +528,8 @@ void setup() {
             delay(1000U);
         }
         CW_SecureSession session;
-        while (!wallet.connect(session)) {
-            delay(200);
+        if (!wallet.connect(session)) {
+            continue;
         }
         Serial.println(F("Card connected, secure channel established."));
 
@@ -593,7 +564,7 @@ void setup() {
         Serial.println(F("yParity determination failed! Halting."));
         while(1);
     }
-    Serial.print("yParity: ");
+    Serial.print(F("yParity: "));
     Serial.println(yParity);
 
     /* RLP encode signed tx and send */
