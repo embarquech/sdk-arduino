@@ -6,40 +6,60 @@
  */
 // cppcheck-suppress unusedFunction
 bool CryptnoxUtils::secure_compare(const uint8_t* a, const uint8_t* b, size_t len) {
-    uint8_t diff = 0U;
-    for (size_t i = 0U; i < len; i++) {
-        diff |= a[i] ^ b[i];
+    bool ret = false;
+    if ((a != NULL) && (b != NULL) && (len > 0U)) {
+        uint8_t diff = 0U;
+        for (size_t i = 0U; i < len; i++) {
+            diff |= a[i] ^ b[i];
+        }
+        ret = (diff == 0U);
     }
-    return diff == 0U;
+    return ret;
 }
 
 /**
  * @brief Securely zero a buffer, guaranteed not to be optimised away.
  */
 void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
-    volatile uint8_t* p = buf;
-    for (size_t i = 0U; i < len; i++) {
-        p[i] = 0U;
+    if ((buf != NULL) && (len > 0U)) {
+        volatile uint8_t* p = buf;
+        for (size_t i = 0U; i < len; i++) {
+            p[i] = 0U;
+        }
     }
 }
 
 /**
- * @brief Generate a single cryptographically random byte using the RA4M1 hardware TRNG.
+ * @brief Safe memcpy — checks src, dst and size before copying.
+ * @return true if copy succeeded, false otherwise.
  */
-uint8_t CryptnoxUtils::trng_byte() {
-    static bool     initialized = false;
-    static uint32_t rngBuf      = 0U;
-    static uint8_t  rngPos      = 4U; /* 4 => force refill on first call */
+bool CryptnoxUtils::safe_memcpy(uint8_t* dst, size_t dstSize,
+                                 const uint8_t* src, size_t count) {
+    bool ret = false;
+    if ((dst != NULL) && (src != NULL) && (count > 0U) && (count <= dstSize)) {
+        bool overlap = (dst < (src + count)) && (src < (dst + dstSize));
+        if (!overlap) {
+            memcpy(dst, src, count);
+            ret = true;
+        }
+    }
+    return ret;
+}
 
+/**
+ * @brief Generate a cryptographically random byte using the RA4M1 hardware TRNG.
+ * @return true if successful, false if TRNG failed.
+ */
+bool CryptnoxUtils::trng_byte(uint8_t& out) {
+    static bool initialized = false;
+    bool ret = false;
     if (!initialized) {
         TRNG.begin();
         initialized = true;
     }
-    if (rngPos >= 4U) {
-        TRNG.random32(&rngBuf);
-        rngPos = 0U;
+    out = 0U;
+    if (TRNG.random8(&out) != 0) {
+        ret = true;
     }
-    const uint8_t b = (uint8_t)((rngBuf >> (rngPos * 8U)) & 0xFFU);
-    rngPos++;
-    return b;
+    return ret;
 }

@@ -27,9 +27,11 @@ bool CryptnoxWallet::connect(CW_SecureSession& session) {
 
     for (uint8_t attempt = 0U; (attempt < CW_CONNECT_MAX_ATTEMPTS) && (ret == false); attempt++) {
         if (attempt > 0U) {
+#if CW_DEBUG_LOGGING
             _logger.print(F("Retrying card connection (attempt "));
             _logger.print((uint8_t)(attempt + 1U));
             _logger.println(F(")..."));
+#endif
             _secure.resetReader();
             delay(200);
         }
@@ -53,6 +55,19 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
         uint8_t cardCertificateLength = 0U;
 
         if (_secure.getCardCertificate(cardCertificate, cardCertificateLength)) {
+#if CW_VERIFY_CERT
+            uint8_t certResult = _secure.verifyCertificateChain(cardCertificate,
+                                                                cardCertificateLength);
+            if (certResult != CW_CERT_OK) {
+#if CW_DEBUG_LOGGING
+                _logger.print(F("Card authenticity check failed (code 0x"));
+                _logger.print(certResult, HEX);
+                _logger.println(F("). Aborting."));
+#endif
+                return false;
+            }
+#endif /* CW_VERIFY_CERT */
+
             uint8_t cardEphemeralPubKey[64U]; /* CARDEPHEMERALPUBKEY_SIZE */
             if (_secure.extractCardEphemeralKey(cardCertificate, cardEphemeralPubKey)) {
                 uint8_t openSecureChannelSalt[32U];
@@ -64,22 +79,34 @@ bool CryptnoxWallet::establishSecureChannel(CW_SecureSession& session) {
                     if (_secure.mutuallyAuthenticate(session, openSecureChannelSalt,
                                                     clientPublicKey, clientPrivateKey,
                                                     sessionCurve, cardEphemeralPubKey)) {
+#if CW_DEBUG_LOGGING
                         _logger.println(F("Secure channel established"));
+#endif
                         ret = true;
                     } else {
+#if CW_DEBUG_LOGGING
                         _logger.println(F("Mutual authentication failed"));
+#endif
                     }
                 } else {
+#if CW_DEBUG_LOGGING
                     _logger.println(F("Failed to open secure channel"));
+#endif
                 }
             } else {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("Failed to extract card ephemeral key"));
+#endif
             }
         } else {
+#if CW_DEBUG_LOGGING
             _logger.println(F("Failed to get card certificate"));
+#endif
         }
     } else {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Failed to select Cryptnox application"));
+#endif
     }
 
     return ret;
@@ -96,7 +123,9 @@ void CryptnoxWallet::disconnect(CW_SecureSession& session) {
 // cppcheck-suppress unusedFunction
 void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
     if (!isSecureChannelOpen(session)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Secure channel not open. Cannot get card info."));
+#endif
         return;
     }
     uint8_t data[] = { 0x00U };
@@ -107,10 +136,14 @@ void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
 // cppcheck-suppress unusedFunction
 void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength) {
     if (!isSecureChannelOpen(session)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Secure channel not open. Cannot verify PIN."));
+#endif
     }
     else if ((pin == NULL) || (pinLength < CW_MIN_PIN_LENGTH) || (pinLength > CW_MAX_PIN_LENGTH)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Invalid PIN (must be 4-9 digits)."));
+#endif
     }
     else {
         uint8_t paddedPin[CW_MAX_PIN_LENGTH] = { 0U };
@@ -126,10 +159,14 @@ bool CryptnoxWallet::writeUserData(CW_SecureSession& session, uint8_t slot,
     bool ret = false;
 
     if (!isSecureChannelOpen(session)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Secure channel not open. Cannot write user data."));
+#endif
     }
     else if ((data == NULL) || (dataLength == 0U)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Invalid data for write user data."));
+#endif
     }
     else {
         uint16_t offset = 0U;
@@ -144,15 +181,19 @@ bool CryptnoxWallet::writeUserData(CW_SecureSession& session, uint8_t slot,
 
             uint8_t apdu[] = { 0x80U, 0xFCU, slot, page };
 
+#if CW_DEBUG_LOGGING
             _logger.print(F("Writing user data page "));
             _logger.print(page);
             _logger.print(F(" ("));
             _logger.print(chunkSize);
             _logger.println(F(" bytes)..."));
+#endif
 
             if (!_secure.aesCbcEncrypt(session, apdu, sizeof(apdu), data + offset, chunkSize)) {
+#if CW_DEBUG_LOGGING
                 _logger.print(F("Error: Write user data failed on page "));
                 _logger.println(page);
+#endif
                 ret = false;
             }
             else {
@@ -263,19 +304,27 @@ bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignR
     bool ret = false;
 
     if (!isSecureChannelOpen(request.session)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Secure channel not open. Cannot sign."));
+#endif
         result.errorCode = CW_INVALID_SESSION;
     }
     else if ((request.hash == NULL) || (request.hashLength == 0U)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Invalid parameters for sign."));
+#endif
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
     }
     else if (request.hashLength > CW_HASH_SIZE) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Hash too large."));
+#endif
         result.errorCode = CW_SIGN_KEY_TOO_SHORT;
     }
     else if ((request.pinLessMode) && (request.keyType != CW_SIGN_PINLESS_K1)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
+#endif
         result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
     }
     else {
@@ -288,7 +337,9 @@ bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignR
                 pinLength++;
             }
             if ((pinLength > 0U) && (pinLength < CW_MIN_PIN_LENGTH)) {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("Error: PIN too short (must be 4-9 digits)."));
+#endif
                 result.errorCode = CW_SIGN_PIN_INCORRECT;
                 ret = false;
             }
@@ -328,14 +379,18 @@ bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data,
     bool ret = false;
     uint8_t apdu[] = { 0x80U, 0xC0U, request.keyType, request.signatureType };
 
+#if CW_DEBUG_LOGGING
     _logger.println(F("Sending SIGN APDU..."));
+#endif
 
     if (_secure.aesCbcEncrypt(request.session, apdu, sizeof(apdu), data, dataLength,
                                derResponse, &derLength)) {
         ret = true;
     }
     else {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Sign APDU failed."));
+#endif
         result.errorCode = CW_SIGN_NO_KEY_LOADED;
     }
 
@@ -347,7 +402,9 @@ bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t de
     bool ret = false;
 
     if ((derLength < 2U) || (derResponse[0] != CW_DER_TAG_SEQUENCE)) {
+#if CW_DEBUG_LOGGING
         _logger.println(F("Error: Invalid signature data (missing DER SEQUENCE tag)."));
+#endif
         result.errorCode = CW_NOK;
     }
     else {
@@ -355,7 +412,9 @@ bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t de
         uint8_t derTotalLength   = 2U + derContentLength;
 
         if (derTotalLength > derLength) {
+#if CW_DEBUG_LOGGING
             _logger.println(F("Error: DER signature length exceeds response."));
+#endif
             result.errorCode = CW_NOK;
         }
         else {
@@ -365,7 +424,9 @@ bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t de
             uint8_t sLen = 0U;
 
             if (!parseDerSignature(derResponse, derTotalLength, r, rLen, s, sLen)) {
+#if CW_DEBUG_LOGGING
                 _logger.println(F("Error: Failed to parse DER signature."));
+#endif
                 result.errorCode = CW_NOK;
             }
             else {
@@ -398,15 +459,19 @@ bool CryptnoxWallet::extractRawSignature(const uint8_t* derResponse, uint16_t de
 }
 
 void CryptnoxWallet::debugPrintSignature(const uint8_t* signature) {
+#if CW_DEBUG_LOGGING
     _logger.print(F("Signature ("));
     _logger.print((uint8_t)CW_RAW_SIGNATURE_SIZE);
     _logger.println(F(" bytes):"));
     for (uint8_t i = 0U; i < CW_RAW_SIGNATURE_SIZE; i++) {
         _logger.print(F("0x"));
-        if (signature[i] < 0x10U) _logger.print(F("0"));
+        if (signature[i] < 0x10U) { _logger.print(F("0")); }
         _logger.print(signature[i], HEX);
         _logger.print(F(" "));
-        if ((i + 1U) % 16U == 0U && (i + 1U) != CW_RAW_SIGNATURE_SIZE) _logger.println();
+        if (((i + 1U) % 16U == 0U) && ((i + 1U) != CW_RAW_SIGNATURE_SIZE)) { _logger.println(); }
     }
     _logger.println();
+#else
+    (void)signature;
+#endif
 }

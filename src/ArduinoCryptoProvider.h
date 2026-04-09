@@ -21,7 +21,7 @@
  *  - AESLib     for AES-CBC encrypt / decrypt
  *  - SHA512     (Crypto library) for SHA-512 hashing
  *  - micro-ecc  for ECDH shared secret and EC key generation
- *  - RA4M1 TRNG (via CryptnoxUtils::trng_byte) for random byte generation
+ *  - RA4M1 TRNG (via CryptnoxUtils::trngByte) for random byte generation
  *
  * The constructor registers the internal static RNG callback with
  * micro-ecc (uECC_set_rng) so callers never need to do this manually.
@@ -38,6 +38,8 @@ public:
 
     /** @name CW_CryptoProvider interface */
     ///@{
+    void sha256(const uint8_t* data, size_t len, uint8_t* out) override;
+
     void sha512(const uint8_t* data, size_t len, uint8_t* out) override;
 
     uint16_t aesCbcEncrypt(const uint8_t* in, uint16_t len, uint8_t* out,
@@ -63,7 +65,7 @@ private:
     /**
      * @brief Static RNG callback compatible with uECC_set_rng().
      *
-     * Fills dest with size random bytes via CryptnoxUtils::trng_byte().
+     * Fills dest with size random bytes via CryptnoxUtils::trngByte().
      *
      * @param dest Buffer to fill.
      * @param size Number of bytes to generate.

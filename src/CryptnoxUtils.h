@@ -46,6 +46,17 @@ public:
     static void secure_wipe(uint8_t* buf, size_t len);
 
     /**
+     * @brief Bounds-checked memcpy — validates pointers, count, and non-overlap before copying.
+     *
+     * @param dst     Destination buffer pointer.
+     * @param dstSize Capacity of the destination buffer in bytes.
+     * @param src     Source buffer pointer.
+     * @param count   Number of bytes to copy.
+     * @return true if the copy succeeded, false if any argument is invalid or buffers overlap.
+     */
+    static bool safe_memcpy(uint8_t* dst, size_t dstSize, const uint8_t* src, size_t count);
+
+    /**
      * @brief Generate a single cryptographically random byte using the RA4M1 hardware TRNG.
      *
      * Initialises the hardware TRNG on first call. Consumes one 32-bit hardware

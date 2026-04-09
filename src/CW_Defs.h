@@ -56,6 +56,21 @@
 #define CW_DER_TAG_SEQUENCE           (0x30U)
 #define CW_DER_TAG_INTEGER            (0x02U)
 
+/* Certificate verification constants */
+#define CW_CERT_NONCE_SIZE            (8U)     /**< Challenge nonce length in bytes */
+
+/* Certificate verification result codes */
+#define CW_CERT_OK                    (0x00U)  /**< Certificate chain verified */
+#define CW_CERT_FORMAT_ERROR          (0x10U)  /**< Malformed certificate data */
+#define CW_CERT_NONCE_MISMATCH        (0x11U)  /**< Challenge nonce not echoed */
+#define CW_CERT_CARD_SIG_INVALID      (0x12U)  /**< Card cert ECDSA sig failed */
+#define CW_CERT_MANUF_SIG_INVALID     (0x13U)  /**< Manufacturer cert ECDSA sig failed */
+#define CW_CERT_KEY_NOT_FOUND         (0x14U)  /**< Device public key OID not found */
+
+/* Manufacturer certificate maximum buffer size (bytes).
+ * Typical Cryptnox manufacturer certificates are 200–280 bytes. */
+#define CW_MANUF_CERT_MAX_BYTES       (400U)
+
 /******************************************************************
  * 3. CW_SecureSession struct
  ******************************************************************/
@@ -86,5 +101,25 @@ struct CW_SecureSession {
         memset(iv, 0U, sizeof(iv));
     }
 };
+
+/******************************************************************
+ * 4. Compile-time feature flags
+ ******************************************************************/
+
+/**
+ * Set to 1 to enable certificate chain verification (adds SHA-256 + ~4 KB Flash).
+ * Disabled by default to preserve Flash on resource-constrained boards.
+ */
+#ifndef CW_VERIFY_CERT
+#  define CW_VERIFY_CERT 0
+#endif
+
+/**
+ * Set to 1 to enable library-internal debug logging via CW_Logger.
+ * Disabled by default to preserve Flash on resource-constrained boards.
+ */
+#ifndef CW_DEBUG_LOGGING
+#  define CW_DEBUG_LOGGING 0
+#endif
 
 #endif // CW_DEFS_H

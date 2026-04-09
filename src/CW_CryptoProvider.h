@@ -23,6 +23,15 @@
 class CW_CryptoProvider {
 public:
     /**
+     * @brief Compute SHA-256 over a contiguous data buffer.
+     *
+     * @param[in]  data  Input buffer.
+     * @param[in]  len   Number of bytes to hash.
+     * @param[out] out   32-byte output buffer.
+     */
+    virtual void sha256(const uint8_t* data, size_t len, uint8_t* out) = 0;
+
+    /**
      * @brief Compute SHA-512 over a contiguous data buffer.
      *
      * @param[in]  data  Input buffer.
