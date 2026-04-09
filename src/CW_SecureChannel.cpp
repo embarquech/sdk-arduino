@@ -189,7 +189,8 @@ bool CW_SecureChannel::getCardCertificate(uint8_t* cardCertificate, uint8_t& car
             if (checkStatusWord(getCardCertificateResponse, getCardCertificateResponseLength,
                                 0x90U, 0x00U)) {
                 cardCertificateLength = getCardCertificateResponseLength - RESPONSE_STATUS_WORDS_IN_BYTES;
-                memcpy(cardCertificate, getCardCertificateResponse, cardCertificateLength);
+                CryptnoxUtils::safe_memcpy(cardCertificate, GETCARDCERTIFICATE_IN_BYTES,
+                                           getCardCertificateResponse, cardCertificateLength);
                 ret = true;
             } else {
 #if CW_DEBUG_LOGGING
