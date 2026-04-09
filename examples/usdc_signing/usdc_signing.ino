@@ -263,12 +263,12 @@ void sendRawTx(const uint8_t* raw, size_t len) {
             (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
         client.beginBody();
         client.print(kPfx);
-        char b[HEX_CHAR_BUF_SIZE];
-        b[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
+        char hexByte[HEX_CHAR_BUF_SIZE];
+        hexByte[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
         for (size_t i = 0; i < len; i++) {
-            b[0] = hexC[raw[i] >> 4];  /* high nibble */
-            b[1] = hexC[raw[i] & 0x0f]; /* low nibble */
-            client.print(b);
+            hexByte[0] = hexC[raw[i] >> 4];  /* high nibble */
+            hexByte[1] = hexC[raw[i] & 0x0f]; /* low nibble */
+            client.print(hexByte);
         }
         client.print(kSfx);
         client.endRequest();
@@ -403,7 +403,8 @@ uint8_t fetchNonce(uint64_t* nonce) {
     static const char kSfx[] = "\",\"pending\"]}";
     const int bodyLen = (int)(sizeof(kPfx)-1) + 40 + (int)(sizeof(kSfx)-1);
 
-    for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
+    uint8_t result = 1U;
+    for (uint8_t attempt = 0U; (attempt < TX_MAX_RETRIES) && (result != 0U); attempt++) {
         if (attempt != 0U) {
             delay(1000U);
         }
@@ -442,30 +443,24 @@ uint8_t fetchNonce(uint64_t* nonce) {
         client.endRequest();
 
         int status = client.responseStatusCode();
-        if (status != HTTP_OK) {
-            client.stop();
-            continue;
-        }
         String resp = client.responseBody();
         client.stop();
-        int ri = resp.indexOf("\"result\"");
-        if (ri < 0) {
-            continue;
+        if (status == HTTP_OK) {
+            int ri = resp.indexOf("\"result\"");
+            int xi = (ri >= 0) ? resp.indexOf("0x", ri) : -1;
+            if (xi >= 0) {
+                uint64_t parsed = 0U;
+                for (int i = xi + 2; i < (int)resp.length(); i++) {
+                    char c = resp[i];
+                    if (!((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F'))) break;
+                    parsed = (parsed << 4) | fromHex(c);
+                }
+                *nonce = parsed;
+                result = 0U;
+            }
         }
-        int xi = resp.indexOf("0x", ri);
-        if (xi < 0) {
-            continue;
-        }
-        uint64_t parsed = 0U;
-        for (int i = xi + 2; i < (int)resp.length(); i++) {
-            char c = resp[i];
-            if (!((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F'))) break;
-            parsed = (parsed << 4) | fromHex(c);
-        }
-        *nonce = parsed;
-        return 0U;
     }
-    return 1U;
+    return result;
 }
 
 /**
