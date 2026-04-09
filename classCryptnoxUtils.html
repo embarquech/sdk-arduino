@@ -110,7 +110,7 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memdesc:ad93cfa6e8ddd66aa747b192ae0361263"><td class="mdescLeft">&#160;</td><td class="mdescRight">Securely zero a buffer, guaranteed not to be optimised away.  <br /></td></tr>
 <tr class="separator:ad93cfa6e8ddd66aa747b192ae0361263"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa698edecdb492bac3b990cd65387c08e" id="r_aa698edecdb492bac3b990cd65387c08e"><td class="memItemLeft" align="right" valign="top">static uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxUtils.html#aa698edecdb492bac3b990cd65387c08e">trng_byte</a> ()</td></tr>
-<tr class="memdesc:aa698edecdb492bac3b990cd65387c08e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate a single cryptographically random byte.  <br /></td></tr>
+<tr class="memdesc:aa698edecdb492bac3b990cd65387c08e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Generate a single cryptographically random byte using the RA4M1 hardware TRNG.  <br /></td></tr>
 <tr class="separator:aa698edecdb492bac3b990cd65387c08e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0f3fe157ddfdc1dc053e48470038c967" id="r_a0f3fe157ddfdc1dc053e48470038c967"><td class="memItemLeft" align="right" valign="top">static int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classCryptnoxUtils.html#a0f3fe157ddfdc1dc053e48470038c967">uECC_rng_callback</a> (uint8_t *dest, unsigned size)</td></tr>
 <tr class="memdesc:a0f3fe157ddfdc1dc053e48470038c967"><td class="mdescLeft">&#160;</td><td class="mdescRight">RNG callback compatible with uECC_set_rng().  <br /></td></tr>
@@ -255,10 +255,10 @@ Static Public Member Functions</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Generate a single cryptographically random byte. </p>
+<p>Generate a single cryptographically random byte using the RA4M1 hardware TRNG. </p>
 <p>Generate one pseudo-random byte using Arduino's randomSeed/random.</p>
-<p>Seeds the PRNG once on first call using analogRead noise.</p>
-<dl class="section return"><dt>Returns</dt><dd>A random byte in [0, 255].</dd>
+<p>Initialises the hardware TRNG on first call, then calls TRNG.random8() directly for each byte. Logs an error to Serial if the hardware TRNG call fails.</p>
+<dl class="section return"><dt>Returns</dt><dd>A random byte in [0, 255], or 0 if the TRNG call failed.</dd>
 <dd>
 A random byte in the range [0, 255]. </dd></dl>
 
@@ -299,7 +299,7 @@ A random byte in the range [0, 255]. </dd></dl>
 </div><div class="memdoc">
 
 <p>RNG callback compatible with uECC_set_rng(). </p>
-<p>Fills dest with size random bytes by calling <a class="el" href="classCryptnoxUtils.html#aa698edecdb492bac3b990cd65387c08e" title="Generate a single cryptographically random byte.">trng_byte()</a> repeatedly.</p>
+<p>Fills dest with size random bytes by calling <a class="el" href="classCryptnoxUtils.html#aa698edecdb492bac3b990cd65387c08e" title="Generate a single cryptographically random byte using the RA4M1 hardware TRNG.">trng_byte()</a> repeatedly.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">dest</td><td>Pointer to the buffer to fill. </td></tr>
