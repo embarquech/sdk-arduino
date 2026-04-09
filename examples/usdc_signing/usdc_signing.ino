@@ -296,7 +296,7 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     static const char hexChars[] = "0123456789abcdef";
     /* ecrecover calldata: "0x" + hash(64) + v(64) + r(64) + s(64) = 258 chars + NUL */
     char hexBuf[260];
-    uint8_t pos = 0U;
+    uint16_t pos = 0U;
     hexBuf[pos++] = '0';
     hexBuf[pos++] = 'x';
     for (uint8_t i = 0U; i < 32U; i++) {
@@ -304,7 +304,7 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         hexBuf[pos++] = hexChars[hash[i] & 0x0f];
     }
     /* v field: ECRECOVER_V_PAD_CHARS zero chars, then 1 value byte — filled per iteration */
-    const uint8_t vOffset = pos;
+    const uint16_t vOffset = pos;
     for (uint8_t i = 0U; i < ECRECOVER_V_PAD_CHARS; i++) {
         hexBuf[pos++] = '0';
     }
@@ -393,9 +393,10 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
 
 /**
  * @brief Fetch the current nonce for ADDR_FROM via eth_getTransactionCount.
- * @return Current nonce (pending), or 0 on failure after retries.
+ * @param nonce Output: nonce value on success (note: 0 is a valid nonce for a fresh address).
+ * @return 0 on success, 1 on failure.
  */
-uint64_t fetchNonce() {
+uint8_t fetchNonce(uint64_t* nonce) {
     static const char kPfx[] =
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getTransactionCount\","
         "\"params\":[\"0x";
@@ -455,16 +456,16 @@ uint64_t fetchNonce() {
         if (xi < 0) {
             continue;
         }
-        uint64_t nonce = 0;
+        uint64_t parsed = 0U;
         for (int i = xi + 2; i < (int)resp.length(); i++) {
             char c = resp[i];
             if (!((c>='0'&&c<='9')||(c>='a'&&c<='f')||(c>='A'&&c<='F'))) break;
-            nonce = (nonce << 4) | fromHex(c);
+            parsed = (parsed << 4) | fromHex(c);
         }
-        return nonce;
+        *nonce = parsed;
+        return 0U;
     }
-    Serial.println(F("fetchNonce failed!"));
-    return 0;
+    return 1U;
 }
 
 /**
@@ -483,13 +484,18 @@ void setup() {
     Serial.println(F("PN532 OK"));
 
     /* Connect to WiFi */
-    Serial.print("Connecting to WiFi...");
+    Serial.print(F("Connecting to WiFi"));
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    while (WiFi.status() != WL_CONNECTED) {
+    uint8_t retries = 20U;
+    while ((WiFi.status() != WL_CONNECTED) && retries--) {
         delay(500U);
-        Serial.print(".");
+        Serial.print(F("."));
     }
-    Serial.println("OK");
+    Serial.println();
+    if (WiFi.status() != WL_CONNECTED) {
+        Serial.println(F("WiFi failed!"));
+        while(1);
+    }
     delay(2000); /* Allow network stack to stabilise before first SSL connection */
 
     /* Build ERC-20 calldata */
@@ -498,7 +504,12 @@ void setup() {
 
     /* Build unsigned EIP-1559 transaction */
     Tx2 tx2;
-    tx2.nonce              = fetchNonce();
+    uint64_t fetchedNonce = 0U;
+    if (fetchNonce(&fetchedNonce) != 0U) {
+        Serial.println(F("fetchNonce failed! Halting."));
+        while(1);
+    }
+    tx2.nonce              = fetchedNonce;
     tx2.maxPriorityFeePerGas = MAX_PRIORITY_FEE;
     tx2.maxFeePerGas       = MAX_FEE;
     tx2.gasLimit           = GAS_LIMIT_ERC20;
@@ -524,8 +535,8 @@ void setup() {
             delay(1000U);
         }
         CW_SecureSession session;
-        while (!wallet.connect(session)) {
-            delay(200);
+        if (!wallet.connect(session)) {
+            continue;
         }
         Serial.println(F("Card connected, secure channel established."));
 
@@ -560,7 +571,7 @@ void setup() {
         Serial.println(F("yParity determination failed! Halting."));
         while(1);
     }
-    Serial.print("yParity: ");
+    Serial.print(F("yParity: "));
     Serial.println(yParity);
 
     /* RLP encode signed tx and send */
