@@ -79,9 +79,9 @@ uint32_t RlpEncodeWholeHeader(uint8_t* header_output, uint32_t total_len)
         uint8_t header[8];
         memset(header, 0, 8U);
         header[0] = tmp_header[0];
-        for (int i = 0; i < hexdigit; i++)
+        for (uint32_t i = 0U; i < hexdigit; i++)
         {
-            header[i + 1] = tmp_header[hexdigit - i];
+            header[i + 1U] = tmp_header[hexdigit - i];
         }
         memcpy(header_output, header, (size_t)hexdigit + 1U);
         return hexdigit + 1U;
@@ -137,9 +137,9 @@ uint32_t RlpEncodeItem(uint8_t* output, const uint8_t* input, uint32_t input_len
         uint8_t header[8];
         memset(header, 0, 8U);
         header[0] = tmp_header[0];
-        for (int i = 0; i < hexdigit; i++)
+        for (uint32_t i = 0U; i < hexdigit; i++)
         {
-            header[i + 1] = tmp_header[hexdigit - i];
+            header[i + 1U] = tmp_header[hexdigit - i];
         }
         memcpy(output, header, hexdigit + 1U);
         memcpy(output + hexdigit + 1U, input, (size_t)input_len);
@@ -167,13 +167,13 @@ uint32_t ConvertNumberToUintArray(uint8_t* str, uint32_t val)
         val = (uint32_t)(val / 256U);
         ret++;
     }
-    tmp[ret] = (uint8_t)(val % 256);
-    for (int i = 0; i < ret + 1; i++)
+    tmp[ret] = (uint8_t)(val % 256U);
+    for (uint32_t i = 0U; i < ret + 1U; i++)
     {
         str[i] = tmp[ret - i];
     }
 
-    return ret + 1;
+    return ret + 1U;
 }
 
 /**
