@@ -223,11 +223,15 @@ size_t encodeERC20Transfer(uint8_t* out) {
  * @param len Length of raw transaction in bytes
  */
 void sendRawTx(const uint8_t* raw, size_t len) {
-    static const char hexC[] = "0123456789abcdef";
-    static const char kPfx[] =
+    /* Lookup table for nibble-to-hex-character conversion. */
+    static const char hexChars[] = "0123456789abcdef";
+    /* Fixed opening of the JSON-RPC body, up to and including the "0x" prefix
+     * where the hex-encoded transaction bytes will be inserted. */
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_sendRawTransaction\","
         "\"params\":[\"0x";
-    static const char kSfx[] = "\"]}";
+    /* Fixed closing of the JSON-RPC body that follows the hex transaction bytes. */
+    static const char requestSuffix[] = "\"]}";
     for (uint8_t attempt = 0U; attempt < TX_MAX_RETRIES; attempt++) {
         if (attempt != 0U) {
             delay(TX_RETRY_DELAY_MS);
@@ -247,10 +251,6 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("sendRawTx: failed to connect to RPC host."));
-            continue;
-        }
         client.beginRequest();
         int err = client.post("/");
         if (err != HTTP_SUCCESS) {
@@ -258,22 +258,28 @@ void sendRawTx(const uint8_t* raw, size_t len) {
             client.stop();
             continue;
         }
+        /* Content-Length = prefix + 2 hex chars per raw byte + suffix. */
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length",
-            (int)(sizeof(kPfx)-1) + 2*(int)len + (int)(sizeof(kSfx)-1));
+            (int)(sizeof(requestPrefix)-1) + 2*(int)len + (int)(sizeof(requestSuffix)-1));
         client.beginBody();
-        client.print(kPfx);
-        char hexByte[HEX_CHAR_BUF_SIZE];
-        hexByte[2] = '\0'; /* two hex chars + NUL for each byte of raw tx */
+        client.print(requestPrefix);
+        /* Encode each raw transaction byte as two hex characters and stream it
+         * directly to the HTTP client, avoiding a large intermediate buffer. */
+        char byteHexStr[HEX_CHAR_BUF_SIZE];
+        byteHexStr[2] = '\0';
         for (size_t i = 0; i < len; i++) {
-            hexByte[0] = hexC[raw[i] >> 4];  /* high nibble */
-            hexByte[1] = hexC[raw[i] & 0x0f]; /* low nibble */
-            client.print(hexByte);
+            byteHexStr[0] = hexChars[raw[i] >> 4];   /* high nibble */
+            byteHexStr[1] = hexChars[raw[i] & 0x0f]; /* low nibble  */
+            client.print(byteHexStr);
         }
-        client.print(kSfx);
+        client.print(requestSuffix);
         client.endRequest();
         int status = client.responseStatusCode();
-        bool txSent = (status > 0);
+        String responseBody = client.responseBody();
+        bool statusOk = (status == HTTP_OK);
+        bool noJsonError = (responseBody.indexOf("\"error\"") == -1);
+        bool txSent = statusOk && noJsonError;
         client.stop();
         if (txSent) {
             break;
@@ -319,12 +325,12 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
     }
     hexBuf[pos] = '\0'; /* pos == 258 */
 
-    static const char kPrefix[] =
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"eth_call\","
         "\"params\":[{\"to\":\"0x0000000000000000000000000000000000000001\","
         "\"data\":\"";
-    static const char kSuffix[] = "\"},\"latest\"]}";
-    const int bodyLen = (int)(sizeof(kPrefix) - 1) + 258 + (int)(sizeof(kSuffix) - 1);
+    static const char requestSuffix[] = "\"},\"latest\"]}";
+    const int bodyLen = (int)(sizeof(requestPrefix) - 1) + 258 + (int)(sizeof(requestSuffix) - 1);
 
     uint8_t result = YPARITY_UNKNOWN;
     for (uint8_t yp = 0U; (yp <= 1U) && (result == YPARITY_UNKNOWN); yp++) {
@@ -349,10 +355,6 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("determineYParity: failed to connect to RPC host."));
-            continue;
-        }
         client.beginRequest();
         int err = client.post("/");
         if (err != HTTP_SUCCESS) {
@@ -363,9 +365,9 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();
-        client.print(kPrefix);
+        client.print(requestPrefix);
         client.print(hexBuf);
-        client.print(kSuffix);
+        client.print(requestSuffix);
         client.endRequest();
 
         int status = client.responseStatusCode();
@@ -397,11 +399,11 @@ uint8_t determineYParity(const uint8_t* hash, const uint8_t* r, const uint8_t* s
  * @return 0 on success, 1 on failure.
  */
 uint8_t fetchNonce(uint64_t* nonce) {
-    static const char kPfx[] =
+    static const char requestPrefix[] =
         "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"eth_getTransactionCount\","
         "\"params\":[\"0x";
-    static const char kSfx[] = "\",\"pending\"]}";
-    const int bodyLen = (int)(sizeof(kPfx)-1) + 40 + (int)(sizeof(kSfx)-1);
+    static const char requestSuffix[] = "\",\"pending\"]}";
+    const int bodyLen = (int)(sizeof(requestPrefix)-1) + 40 + (int)(sizeof(requestSuffix)-1);
 
     uint8_t result = 1U;
     for (uint8_t attempt = 0U; (attempt < TX_MAX_RETRIES) && (result != 0U); attempt++) {
@@ -423,10 +425,6 @@ uint8_t fetchNonce(uint64_t* nonce) {
         }
         WiFiSSLClient wifiClient;
         HttpClient client(wifiClient, RPC_HOST, RPC_PORT);
-        if (wifiClient.connect(RPC_HOST, RPC_PORT) == 0) {
-            Serial.println(F("fetchNonce: failed to connect to RPC host."));
-            continue;
-        }
         client.beginRequest();
         int err = client.post("/");
         if (err != HTTP_SUCCESS) {
@@ -437,9 +435,9 @@ uint8_t fetchNonce(uint64_t* nonce) {
         client.sendHeader("Content-Type", "application/json");
         client.sendHeader("Content-Length", bodyLen);
         client.beginBody();
-        client.print(kPfx);
+        client.print(requestPrefix);
         client.print(ADDR_FROM);
-        client.print(kSfx);
+        client.print(requestSuffix);
         client.endRequest();
 
         int status = client.responseStatusCode();
