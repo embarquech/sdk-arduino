@@ -46,11 +46,12 @@ public:
     static void secure_wipe(uint8_t* buf, size_t len);
 
     /**
-     * @brief Generate a single cryptographically random byte.
+     * @brief Generate a single cryptographically random byte using the RA4M1 hardware TRNG.
      *
-     * Seeds the PRNG once on first call using analogRead noise.
+     * Initialises the hardware TRNG on first call, then calls TRNG.random8() directly
+     * for each byte. Logs an error to Serial if the hardware TRNG call fails.
      *
-     * @return A random byte in [0, 255].
+     * @return A random byte in [0, 255], or 0 if the TRNG call failed.
      */
     static uint8_t trng_byte();
 

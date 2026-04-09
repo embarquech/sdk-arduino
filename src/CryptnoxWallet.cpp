@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "CryptnoxWallet.h"
+#include "CryptnoxUtils.h"
 
 /******************************************************************
  * Constructor
@@ -225,7 +226,17 @@ CW_SignResult CryptnoxWallet::sign(CW_SignRequest& request) {
                 result.errorCode = CW_OK;
             }
         }
+        CryptnoxUtils::secure_wipe(data, sizeof(data));
     }
+
+    /* Wipe every POD field in the caller's request struct.
+     * (CW_SecureSession& session is a reference and cannot be zeroed here.) */
+    CryptnoxUtils::secure_wipe(request.pin, sizeof(request.pin));
+    request.keyType       = 0U;
+    request.signatureType = 0U;
+    request.pinLessMode   = false;
+    request.hash          = nullptr;
+    request.hashLength    = 0U;
 
     return result;
 }

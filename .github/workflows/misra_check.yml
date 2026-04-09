@@ -17,6 +17,19 @@ jobs:
       - name: Install cppcheck
         run: sudo apt-get install -y cppcheck
 
+      - name: Create stubs for static analysis
+        working-directory: examples
+        run: |
+          mkdir stubs
+          echo '#pragma once'                                               > stubs/trng.h
+          echo '#include <stdint.h>'                                       >> stubs/trng.h
+          echo 'class TRNG_Class {'                                        >> stubs/trng.h
+          echo 'public:'                                                   >> stubs/trng.h
+          echo '    void begin() {}'                                       >> stubs/trng.h
+          echo '    bool random8(uint8_t* b);'                            >> stubs/trng.h
+          echo '};'                                                        >> stubs/trng.h
+          echo 'static TRNG_Class TRNG;'                                  >> stubs/trng.h
+
       - name: Run MISRA C analysis (compile_commands mode)
         working-directory: examples
         run: |
@@ -42,4 +55,5 @@ jobs:
             --suppress=unmatchedSuppression \
             --force \
             -DSTATIC_ANALYSIS=1 \
+            -I stubs \
             .

@@ -1,4 +1,5 @@
 #include "CryptnoxUtils.h"
+#include <trng.h>
 
 /**
  * @brief Constant-time buffer comparison, resistant to timing side-channel attacks.
@@ -34,12 +35,16 @@ void CryptnoxUtils::secure_wipe(uint8_t* buf, size_t len) {
  * @return A random byte in the range [0, 255].
  */
 uint8_t CryptnoxUtils::trng_byte() {
-    static bool seeded = false;
-    if (seeded == false) {
-        randomSeed(analogRead(0U));
-        seeded = true;
+    static bool initialized = false;
+    if (!initialized) {
+        TRNG.begin();
+        initialized = true;
     }
-    return (uint8_t)random(0U, 256U);
+    uint8_t b = 0U;
+    if (!TRNG.random8(&b)) {
+        Serial.println(F("TRNG.random8 failed"));
+    }
+    return b;
 }
 
 /**
