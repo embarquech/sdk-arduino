@@ -17,9 +17,32 @@ jobs:
       - name: Install cppcheck
         run: sudo apt-get install -y cppcheck
 
+      - name: Create stubs for static analysis
+        working-directory: examples
+        run: |
+          mkdir stubs
+          echo '#pragma once'                                               > stubs/trng.h
+          echo '#include <stdint.h>'                                       >> stubs/trng.h
+          echo 'class TRNG_Class {'                                        >> stubs/trng.h
+          echo 'public:'                                                   >> stubs/trng.h
+          echo '    void begin() {}'                                       >> stubs/trng.h
+          echo '    bool random8(uint8_t* b);'                            >> stubs/trng.h
+          echo '};'                                                        >> stubs/trng.h
+          echo 'static TRNG_Class TRNG;'                                  >> stubs/trng.h
+
       - name: Run MISRA C analysis (compile_commands mode)
         working-directory: examples
         run: |
+          # cppcheck 2.x raises meta-warnings for --inline-suppr tags that have no matching violation in the
+          # analysed source; --suppress=unmatchedSuppression silences those meta-warnings so only real MISRA
+          # violations cause a non-zero exit code.
+          #
+          # Example: if a source file contains the defensive suppression
+          #   // cppcheck-suppress misra-c2012-15.5
+          # but the function already has a single exit point (no violation), cppcheck 2.x emits:
+          #   (information) unmatchedSuppression: misra-c2012-15.5 is not suppressed
+          # Without --suppress=unmatchedSuppression such defensive suppressions would cause the
+          # CI step to fail even though no real MISRA violation is present.
           cppcheck \
             --enable=all \
             --std=c++11 \
@@ -29,6 +52,8 @@ jobs:
             --error-exitcode=1 \
             --suppress=missingInclude \
             --suppress=missingIncludeSystem \
+            --suppress=unmatchedSuppression \
             --force \
             -DSTATIC_ANALYSIS=1 \
+            -I stubs \
             .

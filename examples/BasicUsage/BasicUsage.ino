@@ -1,5 +1,5 @@
 /**
- * @file examples.ino
+ * @file BasicUsage.ino
  * @brief Example demonstrating the use of CryptnoxWallet with a PN532 module on Arduino.
  *
  * This sketch initializes the PN532 NFC reader using the CryptnoxWallet class.
@@ -9,9 +9,10 @@
  * Select the communication interface by defining USE_SPI or USE_I2C below.
  */
 
-#include "PN532Adapter.h"
-#include "CryptnoxWallet.h"
-#include "ArduinoSerialAdapter.h"
+#include <PN532Adapter.h>
+#include <CryptnoxWallet.h>
+#include <ArduinoLoggerAdapter.h>
+#include <ArduinoCryptoProvider.h>
 
 /* ============================================================================
  * 1. Interface Selection
@@ -34,7 +35,7 @@
  */
 #define PN532_SS    (10U)
 
-ArduinoSerialAdapter serialAdapter;
+ArduinoLoggerAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_SS, &SPI);
 
 #elif defined(USE_I2C)
@@ -53,7 +54,7 @@ PN532Adapter nfc(serialAdapter, PN532_SS, &SPI);
  */
 #define PN532_RST   (3U)
 
-ArduinoSerialAdapter serialAdapter;
+ArduinoLoggerAdapter serialAdapter;
 PN532Adapter nfc(serialAdapter, PN532_IRQ, PN532_RST, &Wire);
 
 #else
@@ -64,7 +65,8 @@ PN532Adapter nfc(serialAdapter, PN532_IRQ, PN532_RST, &Wire);
 #define DEFAULT_PIN       "000000000"
 #define DEFAULT_PIN_LEN   (sizeof(DEFAULT_PIN) - 1U)
 
-CryptnoxWallet wallet(nfc, serialAdapter);
+ArduinoCryptoProvider cryptoProvider;
+CryptnoxWallet wallet(nfc, serialAdapter, cryptoProvider);
 
 /**
  * @brief Arduino setup function.
