@@ -9,10 +9,7 @@
  * Select the communication interface by defining USE_SPI or USE_I2C below.
  */
 
-#include <PN532Adapter.h>
-#include <CryptnoxWallet.h>
-#include <ArduinoLoggerAdapter.h>
-#include <ArduinoCryptoProvider.h>
+#include <CryptnoxSDK.h>
 
 /* ============================================================================
  * 1. Interface Selection
