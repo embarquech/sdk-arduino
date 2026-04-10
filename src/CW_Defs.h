@@ -71,8 +71,8 @@
 #define CW_CERT_KEY_NOT_FOUND         (0x14U)  /**< Device public key OID not found */
 
 /* Manufacturer certificate maximum buffer size (bytes).
- * Typical Cryptnox manufacturer certificates are 200–280 bytes. */
-#define CW_MANUF_CERT_MAX_BYTES       (400U)
+ * Cryptnox manufacturer certificates observed up to ~411 bytes (30 82 01 97 ...). */
+#define CW_MANUF_CERT_MAX_BYTES       (512U)
 
 /******************************************************************
  * 3. CW_SecureSession struct
@@ -114,7 +114,17 @@ struct CW_SecureSession {
  * Disabled by default to preserve Flash on resource-constrained boards.
  */
 #ifndef CW_VERIFY_CERT
-#  define CW_VERIFY_CERT 0
+#  define CW_VERIFY_CERT 1
+#endif
+
+/**
+ * Set to 1 to also trust the Cryptnox DLT CARDS CA (TEST) key embedded in
+ * CW_TrustedKeys.h.  Allows test/development hardware to pass authenticity checks.
+ * WARNING: Do NOT enable in production deployments.
+ * Disabled by default.
+ */
+#ifndef CW_VERIFY_CERT_TRUST_TEST_CA
+#  define CW_VERIFY_CERT_TRUST_TEST_CA 0
 #endif
 
 /**
@@ -122,7 +132,7 @@ struct CW_SecureSession {
  * Disabled by default to preserve Flash on resource-constrained boards.
  */
 #ifndef CW_DEBUG_LOGGING
-#  define CW_DEBUG_LOGGING 0
+#  define CW_DEBUG_LOGGING 1
 #endif
 
 #endif // CW_DEFS_H

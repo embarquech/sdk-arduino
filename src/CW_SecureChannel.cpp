@@ -98,7 +98,7 @@ bool CW_SecureChannel::printFirmwareVersion() {
  * Private helpers
  ******************************************************************/
 
-bool CW_SecureChannel::checkStatusWord(const uint8_t* response, uint8_t responseLength,
+bool CW_SecureChannel::checkStatusWord(const uint8_t* response, uint16_t responseLength,
                                        uint8_t sw1Expected, uint8_t sw2Expected) {
     bool ret = false;
 
@@ -143,7 +143,7 @@ bool CW_SecureChannel::selectApdu() {
     };
 
     uint8_t response[RESPONSE_SELECT_IN_BYTES];
-    uint8_t responseLength = sizeof(response);
+    uint16_t responseLength = sizeof(response);
 
     if (_driver.sendAPDU(selectApduCmd, sizeof(selectApduCmd), response, responseLength)) {
         if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
@@ -165,7 +165,7 @@ bool CW_SecureChannel::selectApdu() {
 bool CW_SecureChannel::getCardCertificate(uint8_t* cardCertificate, uint8_t& cardCertificateLength) {
     bool ret = false;
     uint8_t getCardCertificateResponse[RESPONSE_GETCARDCERTIFICATE_IN_BYTES];
-    uint8_t getCardCertificateResponseLength = sizeof(getCardCertificateResponse);
+    uint16_t getCardCertificateResponseLength = sizeof(getCardCertificateResponse);
 
     if (cardCertificate != NULL) {
         uint8_t randomBytes[RANDOM_BYTES];
@@ -256,7 +256,7 @@ bool CW_SecureChannel::openSecureChannel(uint8_t* salt,
         memcpy(fullApdu + sizeof(opcApduHeader), sessionPublicKey, CLIENT_PUBLIC_KEY_SIZE);
 
         uint8_t response[RESPONSE_OPENSECURECHANNEL_IN_BYTES];
-        uint8_t responseLength = sizeof(response);
+        uint16_t responseLength = sizeof(response);
 
         if (_driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
             if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
@@ -377,7 +377,7 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
         memcpy(sendApduOpc + offset, ciphertextOPC, cipherLength);
 
         uint8_t response[255U] = { 0U };
-        uint8_t responseLength = sizeof(response);
+        uint16_t responseLength = sizeof(response);
 
         if (_driver.sendAPDU(sendApduOpc, sizeof(sendApduOpc), response, responseLength)) {
             if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
@@ -473,7 +473,7 @@ bool CW_SecureChannel::aesCbcEncrypt(CW_SecureSession& session,
 
     /* 4. Send APDU */
     uint8_t response[255U] = { 0U };
-    uint8_t responseLength = sizeof(response);
+    uint16_t responseLength = sizeof(response);
 
     if (_driver.sendAPDU(s_apduBuf, sendApduLength, response, responseLength)) {
         if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
@@ -671,6 +671,9 @@ bool CW_SecureChannel::verifyEcdsaSha256(const uint8_t* pubKey64,
     _crypto.sha256(message, msgLen, hash);
 
     if (!parseDerSigToRaw(derSig, derSigLen, rawSig)) {
+#if CW_DEBUG_LOGGING
+        _logger.println(F("dbg parseDerSigToRaw FAILED"));
+#endif
         return false;
     }
 
@@ -689,13 +692,13 @@ bool CW_SecureChannel::getManufacturerCertificate(uint8_t* cert, uint16_t& certL
     if (cert != NULL) {
         /* Page 0: first 2 bytes of response data are big-endian total cert length. */
         uint8_t apdu[5U] = { 0x80U, 0xF7U, 0x00U, 0x00U, 0x00U };
-        uint8_t response[130U];  /* 128 data + 2 SW */
-        uint8_t responseLen = sizeof(response);
+        uint8_t response[260U];  /* max PN532 extended-frame APDU payload (PN532_PACKBUFFSIZ = 280, extended frame = 257 bytes) */
+        uint16_t responseLen = sizeof(response);
 
         if (_driver.sendAPDU(apdu, sizeof(apdu), response, responseLen) &&
             checkStatusWord(response, responseLen, 0x90U, 0x00U)) {
 
-            uint8_t dataBytes = responseLen - 2U;  /* strip SW */
+            uint16_t dataBytes = responseLen - 2U;  /* strip SW */
 
             if (dataBytes >= 2U) {
                 uint16_t totalCertLen = ((uint16_t)response[0] << 8U) | response[1];
@@ -818,28 +821,51 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
     /* --- Step 3: Verify manufacturer certificate against trusted CA key.
      *
      * Build the signed message following the Python SDK logic (authenticity.py):
-     *   message = mfCert[4 .. k1OidPos + sizeof(K1_PUBKEY_OID) + 65]
-     *   (i.e. skip 4-byte outer DER SEQUENCE header; stop at end of pubkey)
+     *   message = mfCert[headerSkip .. k1OidPos + sizeof(K1_PUBKEY_OID) + 65]
+     *   (i.e. skip the outer DER SEQUENCE header; stop at end of pubkey)
+     *
+     * The outer SEQUENCE header size is determined dynamically:
+     *   30 LL        — 2 bytes (content 0-127)
+     *   30 81 LL     — 3 bytes (content 128-255)
+     *   30 82 HH LL  — 4 bytes (content 256+, typical for Cryptnox certs)
      *
      * Find the ECDSA-SHA256 BIT STRING that holds the CA's signature.
      * Layout after ECDSA_SHA256_OID: [bit_string_len][0x00][DER sig…] */
-    const uint8_t MF_CERT_HEADER_SKIP = 4U;
+    uint8_t mfCertHeaderSkip = 0U;
+    if (result == CW_CERT_OK) {
+        if (s_mfCertBuf[0] != 0x30U) {
+#if CW_DEBUG_LOGGING
+            _logger.println(F("verifyCert: mfr cert not a SEQUENCE."));
+#endif
+            result = CW_CERT_FORMAT_ERROR;
+        }
+        else if ((s_mfCertBuf[1] & 0x80U) == 0U) {
+            mfCertHeaderSkip = 2U;   /* short form: 30 LL */
+        }
+        else if (s_mfCertBuf[1] == 0x81U) {
+            mfCertHeaderSkip = 3U;   /* 30 81 LL */
+        }
+        else {
+            mfCertHeaderSkip = 4U;   /* 30 82 HH LL */
+        }
+    }
+
     const uint8_t* mfMsg    = NULL;
     uint16_t       mfMsgLen = 0U;
 
     if (result == CW_CERT_OK) {
-        if (k1OidPos <= MF_CERT_HEADER_SKIP) {
+        if (k1OidPos <= mfCertHeaderSkip) {
 #if CW_DEBUG_LOGGING
             _logger.println(F("verifyCert: mfr cert structure error."));
 #endif
             result = CW_CERT_FORMAT_ERROR;
         }
         else {
-            mfMsg    = s_mfCertBuf + MF_CERT_HEADER_SKIP;
-            mfMsgLen = (k1OidPos - MF_CERT_HEADER_SKIP) +
+            mfMsg    = s_mfCertBuf + mfCertHeaderSkip;
+            mfMsgLen = (k1OidPos - mfCertHeaderSkip) +
                        (uint16_t)sizeof(K1_PUBKEY_OID) + 65U;
 
-            if ((MF_CERT_HEADER_SKIP + mfMsgLen) > mfCertLen) {
+            if ((mfCertHeaderSkip + mfMsgLen) > mfCertLen) {
 #if CW_DEBUG_LOGGING
                 _logger.println(F("verifyCert: mfr cert msg out of bounds."));
 #endif
@@ -849,9 +875,17 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
     }
 
     if (result == CW_CERT_OK) {
-        /* Find signature in manufacturer cert */
-        uint16_t ecdsaOidPos = 0U;
-        if (!findBytes(s_mfCertBuf, mfCertLen,
+        /* Find the outer signatureAlgorithm OID.  ECDSA_SHA256_OID appears
+         * twice: once inside TBSCertificate.signature and once in the outer
+         * Certificate.signatureAlgorithm (which is immediately followed by
+         * the signature BIT STRING).  Start the search past the public key
+         * to skip the first (inner) occurrence. */
+        uint16_t ecdsaSearchFrom = pubkeyStart + 65U;
+        uint16_t ecdsaOidPos     = 0U;
+        uint16_t ecdsaSearchLen  = (ecdsaSearchFrom < mfCertLen)
+                                   ? (mfCertLen - ecdsaSearchFrom) : 0U;
+        if ((ecdsaSearchLen == 0U) ||
+            !findBytes(s_mfCertBuf + ecdsaSearchFrom, ecdsaSearchLen,
                        ECDSA_SHA256_OID, sizeof(ECDSA_SHA256_OID), ecdsaOidPos)) {
 #if CW_DEBUG_LOGGING
             _logger.println(F("verifyCert: ECDSA-SHA256 OID not found in mfr cert."));
@@ -859,6 +893,7 @@ uint8_t CW_SecureChannel::verifyCertificateChain(const uint8_t* cardCert,
             result = CW_CERT_FORMAT_ERROR;
         }
         else {
+            ecdsaOidPos += ecdsaSearchFrom;  /* convert to absolute offset */
             /* After the OID: [BIT_STRING_LEN][0x00][DER_SIG...] */
             uint16_t sigOffset = ecdsaOidPos + (uint16_t)sizeof(ECDSA_SHA256_OID);
             if ((sigOffset + 2U) > mfCertLen) {

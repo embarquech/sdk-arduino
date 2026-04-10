@@ -97,10 +97,12 @@ bool PN532Adapter::begin() {
  * @return false otherwise.
  */
 bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
-                            uint8_t* response, uint8_t &responseLength) {
+                            uint8_t* response, uint16_t &responseLength) {
     bool ret = false;
     if ((nfc != NULL) && (serial != NULL) && (apdu != NULL) && (response != NULL)) {
-        bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), apduLength, response, &responseLength);
+        uint16_t respLen = responseLength;
+        bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), (uint8_t)apduLength, response, &respLen);
+        responseLength = respLen;
 
         if (!success) {
             serial->println(F("APDU exchange failed!"));
@@ -109,7 +111,7 @@ bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
             serial->print(responseLength);
             serial->println(F(" bytes):"));
 
-            for (uint8_t i = 0; i < responseLength; i++) {
+            for (uint16_t i = 0; i < responseLength; i++) {
                 serial->print(F("0x"));
                 if (response[i] < 16) serial->print(F("0"));
                 serial->print(response[i], HEX);

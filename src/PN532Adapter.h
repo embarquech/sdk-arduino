@@ -122,7 +122,7 @@ public:
      * @return false if the exchange failed.
      */
     bool sendAPDU(const uint8_t* apdu, uint16_t apduLength,
-                  uint8_t* response, uint8_t &responseLength) override;
+                  uint8_t* response, uint16_t &responseLength) override;
 
     /**
      * @brief Checks for presence of a passive NFC target.
