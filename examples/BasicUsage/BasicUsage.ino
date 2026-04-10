@@ -137,15 +137,15 @@ void loop() {
         if (signResult.errorCode == CW_OK) {
             serialAdapter.println(F("Signature received (64 bytes raw r||s)"));
 
-            /* Print first 8 bytes of r and s for quick visual check */
-            serialAdapter.print(F("  r[0..7]: "));
+            /* Print first 8 bytes of R and S for quick visual check */
+            serialAdapter.print(F("  R[0..7]: "));
             for (uint8_t i = CW_SIG_R_OFFSET; i < CW_SIG_R_OFFSET + 8U; i++) {
                 if (signResult.signature[i] < 0x10U) serialAdapter.print(F("0"));
                 serialAdapter.print(signResult.signature[i], HEX);
                 serialAdapter.print(F(" "));
             }
             serialAdapter.println();
-            serialAdapter.print(F("  s[0..7]: "));
+            serialAdapter.print(F("  S[0..7]: "));
             for (uint8_t i = CW_SIG_S_OFFSET; i < CW_SIG_S_OFFSET + 8U; i++) {
                 if (signResult.signature[i] < 0x10U) serialAdapter.print(F("0"));
                 serialAdapter.print(signResult.signature[i], HEX);
