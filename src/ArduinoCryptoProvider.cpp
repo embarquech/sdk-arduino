@@ -21,7 +21,7 @@ int ArduinoCryptoProvider::trngCallback(uint8_t* dest, unsigned size) {
     int ret = 0;
     if ((dest != NULL) && (size > 0U)) {
         for (unsigned i = 0U; i < size; i++) {
-            dest[i] = CryptnoxUtils::trngByte();
+            dest[i] = CryptnoxUtils::trng_byte();
         }
         ret = 1;
     }

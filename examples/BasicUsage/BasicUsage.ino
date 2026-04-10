@@ -156,12 +156,11 @@ void loop() {
                 serialAdapter.print(F(" "));
             }
             serialAdapter.println();
+            serialAdapter.println(F("Card processed successfully"));
         } else {
             serialAdapter.print(F("Sign failed, errorCode: 0x"));
             serialAdapter.println(signResult.errorCode, HEX);
         }
-
-        serialAdapter.println(F("Card processed successfully"));
     }
 
     /* Always disconnect to reset reader for next card detection */
