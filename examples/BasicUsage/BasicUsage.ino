@@ -100,10 +100,9 @@ void setup() {
  *
  * Demonstrates simplified card connection and processing:
  * 1. Connect to card and establish secure channel (combines detection and channel setup)
- * 2. Verify PIN
- * 3. Get card information
- * 4. Sign a test hash
- * 5. Clear session and reset reader
+ * 2. Get card information
+ * 3. Sign a test hash (PIN included in sign payload)
+ * 4. Clear session and reset reader
  */
 void loop() {
 
@@ -112,15 +111,11 @@ void loop() {
     if (wallet.connect(session)) {
         serialAdapter.println(F("Card connected and secure channel established"));
 
-        /* Step 2: Verify PIN (checks secure channel internally) */
-        serialAdapter.println(F("Verifying PIN..."));
-        wallet.verifyPin(session, (const uint8_t*)DEFAULT_PIN, DEFAULT_PIN_LEN);
-
-        /* Step 3: Get card information (checks secure channel internally) */
+        /* Step 2: Get card information */
         serialAdapter.println(F("Getting card information..."));
         wallet.getCardInfo(session);
 
-        /* Step 4: Sign a test hash (32 bytes of 0x01 for demo purposes) */
+        /* Step 3: Sign a test hash (32 bytes of 0x01 for demo purposes) */
         /* NOTE: Card must have a seed loaded (via Python SDK: card.generate_seed(pin) */
         /*       or card.load_seed(seed, pin)) before signing will work.              */
         serialAdapter.println(F("Signing test hash..."));
@@ -134,7 +129,8 @@ void loop() {
         signRequest.hash = testHash;
         signRequest.hashLength = sizeof(testHash);
         /* Set PIN (must match the PIN used during card.init()) */
-        memcpy(signRequest.pin, DEFAULT_PIN, DEFAULT_PIN_LEN);
+        CryptnoxUtils::safe_memcpy(signRequest.pin, sizeof(signRequest.pin),
+                                    (const uint8_t*)DEFAULT_PIN, DEFAULT_PIN_LEN);
 
         CW_SignResult signResult = wallet.sign(signRequest);
 
@@ -143,14 +139,14 @@ void loop() {
 
             /* Print first 8 bytes of r and s for quick visual check */
             serialAdapter.print(F("  r[0..7]: "));
-            for (uint8_t i = 0U; i < 8U; i++) {
+            for (uint8_t i = CW_SIG_R_OFFSET; i < CW_SIG_R_OFFSET + 8U; i++) {
                 if (signResult.signature[i] < 0x10U) serialAdapter.print(F("0"));
                 serialAdapter.print(signResult.signature[i], HEX);
                 serialAdapter.print(F(" "));
             }
             serialAdapter.println();
             serialAdapter.print(F("  s[0..7]: "));
-            for (uint8_t i = 32U; i < 40U; i++) {
+            for (uint8_t i = CW_SIG_S_OFFSET; i < CW_SIG_S_OFFSET + 8U; i++) {
                 if (signResult.signature[i] < 0x10U) serialAdapter.print(F("0"));
                 serialAdapter.print(signResult.signature[i], HEX);
                 serialAdapter.print(F(" "));
@@ -161,6 +157,10 @@ void loop() {
             serialAdapter.print(F("Sign failed, errorCode: 0x"));
             serialAdapter.println(signResult.errorCode, HEX);
         }
+
+        /* Securely wipe sensitive buffers */
+        CryptnoxUtils::secure_wipe(testHash, sizeof(testHash));
+        CryptnoxUtils::secure_wipe(signResult.signature, sizeof(signResult.signature));
     }
 
     /* Always disconnect to reset reader for next card detection */

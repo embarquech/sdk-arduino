@@ -45,6 +45,9 @@
 
 /* Size constants */
 #define CW_RAW_SIGNATURE_SIZE         (64U)    /**< Raw signature (r[32] + s[32]) */
+#define CW_SIG_R_OFFSET                (0U)    /**< Offset of r component in raw signature */
+#define CW_SIG_S_OFFSET               (32U)    /**< Offset of s component in raw signature */
+#define CW_SIG_COMPONENT_SIZE         (32U)    /**< Size of each signature component (r or s) */
 #define CW_HASH_SIZE                  (32U)    /**< Standard hash size */
 #define CW_MAX_DERIVE_PATH_LENGTH     (20U)    /**< Max BIP32 path bytes */
 #define CW_MIN_PIN_LENGTH              (4U)    /**< Minimum PIN length */
