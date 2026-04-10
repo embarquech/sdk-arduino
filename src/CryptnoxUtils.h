@@ -65,6 +65,17 @@ public:
      * @return A random byte in [0, 255].
      */
     static uint8_t trng_byte();
+
+    /**
+     * @brief Bounds-checked memcpy — validates pointers, count, and non-overlap before copying.
+     *
+     * @param dst     Destination buffer pointer.
+     * @param dstSize Capacity of the destination buffer in bytes.
+     * @param src     Source buffer pointer.
+     * @param count   Number of bytes to copy.
+     * @return true if the copy succeeded, false if any argument is invalid or buffers overlap.
+     */
+    static bool safe_memcpy(uint8_t* dst, size_t dstSize, const uint8_t* src, size_t count);
 };
 
 #endif // CRYPTNOX_UTILS_H

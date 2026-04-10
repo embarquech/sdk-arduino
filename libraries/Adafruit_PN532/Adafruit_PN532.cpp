@@ -75,7 +75,7 @@ byte pn532response_firmwarevers[] = {
 #define PN532DEBUGPRINT Serial ///< Fixed name for debug Serial instance
 // #define PN532DEBUGPRINT SerialUSB ///< Fixed name for debug Serial instance
 
-#define PN532_PACKBUFFSIZ 255                ///< Packet buffer size in bytes
+#define PN532_PACKBUFFSIZ 280                ///< Packet buffer size in bytes (280 covers extended frames up to 270 bytes)
 byte pn532_packetbuffer[PN532_PACKBUFFSIZ]; ///< Packet buffer used in various
                                             ///< transactions
 
@@ -666,7 +666,7 @@ bool Adafruit_PN532::readDetectedPassiveTargetID(uint8_t *uid,
 /**************************************************************************/
 bool Adafruit_PN532::inDataExchange(uint8_t *send, uint8_t sendLength,
                                     uint8_t *response,
-                                    uint8_t *responseLength) {
+                                    uint16_t *responseLength) {
   if (sendLength > PN532_PACKBUFFSIZ - 2) {
 #ifdef PN532DEBUG
     PN532DEBUGPRINT.println(F("APDU length too long for packet buffer"));
@@ -699,39 +699,60 @@ bool Adafruit_PN532::inDataExchange(uint8_t *send, uint8_t sendLength,
 
   if (pn532_packetbuffer[0] == 0 && pn532_packetbuffer[1] == 0 &&
       pn532_packetbuffer[2] == 0xff) {
-    uint8_t length = pn532_packetbuffer[3];
-    if (pn532_packetbuffer[4] != (uint8_t)(~length + 1)) {
+
+    uint16_t dataLen;
+    uint8_t  tfiOffset;
+
+    if (pn532_packetbuffer[3] == 0xFFU && pn532_packetbuffer[4] == 0xFFU) {
+      /* Extended frame: LENH at [5], LENL at [6], LCS at [7] */
+      uint16_t extLen = ((uint16_t)pn532_packetbuffer[5] << 8) | pn532_packetbuffer[6];
+      if ((uint8_t)(pn532_packetbuffer[5] + pn532_packetbuffer[6] + pn532_packetbuffer[7]) != 0U) {
 #ifdef PN532DEBUG
-      PN532DEBUGPRINT.println(F("Length check invalid"));
-      PN532DEBUGPRINT.println(length, HEX);
-      PN532DEBUGPRINT.println((~length) + 1, HEX);
+        PN532DEBUGPRINT.println(F("Extended frame LCS invalid"));
 #endif
-      return false;
+        return false;
+      }
+      if (extLen < 3U) { return false; }
+      dataLen   = extLen - 3U;  /* subtract TFI + CMD + STATUS */
+      tfiOffset = 8U;
+    } else {
+      /* Normal frame: LEN at [3], LCS at [4] */
+      uint8_t nLen = pn532_packetbuffer[3];
+      if (pn532_packetbuffer[4] != (uint8_t)(~nLen + 1)) {
+#ifdef PN532DEBUG
+        PN532DEBUGPRINT.println(F("Length check invalid"));
+        PN532DEBUGPRINT.println(nLen, HEX);
+        PN532DEBUGPRINT.println((~nLen) + 1, HEX);
+#endif
+        return false;
+      }
+      if (nLen < 3U) { return false; }
+      dataLen   = (uint16_t)(nLen - 3U);
+      tfiOffset = 5U;
     }
-    if (pn532_packetbuffer[5] == PN532_PN532TOHOST &&
-        pn532_packetbuffer[6] == PN532_RESPONSE_INDATAEXCHANGE) {
-      if ((pn532_packetbuffer[7] & 0x3f) != 0) {
+
+    if (pn532_packetbuffer[tfiOffset] == PN532_PN532TOHOST &&
+        pn532_packetbuffer[tfiOffset + 1U] == PN532_RESPONSE_INDATAEXCHANGE) {
+      if ((pn532_packetbuffer[tfiOffset + 2U] & 0x3fU) != 0U) {
 #ifdef PN532DEBUG
         PN532DEBUGPRINT.println(F("Status code indicates an error"));
 #endif
         return false;
       }
 
-      length -= 3;
-
-      if (length > *responseLength) {
+      if (dataLen > *responseLength) {
         return false;
       }
 
-      for (i = 0; i < length; ++i) {
-        response[i] = pn532_packetbuffer[8 + i];
+      for (uint16_t k = 0U; k < dataLen; ++k) {
+        response[k] = pn532_packetbuffer[tfiOffset + 3U + k];
       }
-      *responseLength = length;
+      *responseLength = dataLen;
 
       return true;
     } else {
       PN532DEBUGPRINT.print(F("Don't know how to handle this command: "));
-      PN532DEBUGPRINT.println(pn532_packetbuffer[6], HEX);
+      PN532DEBUGPRINT.println(pn532_packetbuffer[tfiOffset + 1U], HEX);
       return false;
     }
   } else {
