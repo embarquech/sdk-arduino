@@ -100,9 +100,8 @@ void setup() {
  *
  * Demonstrates simplified card connection and processing:
  * 1. Connect to card and establish secure channel (combines detection and channel setup)
- * 2. Get card information
- * 3. Sign a test hash (PIN included in sign payload)
- * 4. Clear session and reset reader
+ * 2. Sign a test hash (PIN included in sign payload)
+ * 3. Clear session and reset reader
  */
 void loop() {
 
@@ -111,11 +110,7 @@ void loop() {
     if (wallet.connect(session)) {
         serialAdapter.println(F("Card connected and secure channel established"));
 
-        /* Step 2: Get card information */
-        serialAdapter.println(F("Getting card information..."));
-        wallet.getCardInfo(session);
-
-        /* Step 3: Sign a test hash (32 bytes of 0x01 for demo purposes) */
+        /* Step 2: Sign a test hash (32 bytes of 0x01 for demo purposes) */
         /* NOTE: Card must have a seed loaded (via Python SDK: card.generate_seed(pin) */
         /*       or card.load_seed(seed, pin)) before signing will work.              */
         serialAdapter.println(F("Signing test hash..."));
