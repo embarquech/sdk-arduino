@@ -15,6 +15,8 @@ Adafruit_I2CDevice::Adafruit_I2CDevice(uint8_t addr, TwoWire *theWire) {
   _maxBufferSize = 250; // as defined in Wire.h's RingBuffer
 #elif defined(ESP32)
   _maxBufferSize = I2C_BUFFER_LENGTH;
+#elif defined(ARDUINO_ARCH_RENESAS)
+  _maxBufferSize = 250; // Arduino UNO R4 (Renesas RA4M1)
 #else
   _maxBufferSize = 32;
 #endif

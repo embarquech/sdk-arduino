@@ -48,18 +48,15 @@ bool CryptnoxUtils::safe_memcpy(uint8_t* dst, size_t dstSize,
 
 /**
  * @brief Generate a cryptographically random byte using the RA4M1 hardware TRNG.
- * @return true if successful, false if TRNG failed.
+ * @return A random byte in [0, 255].
  */
-bool CryptnoxUtils::trng_byte(uint8_t& out) {
+uint8_t CryptnoxUtils::trng_byte() {
     static bool initialized = false;
-    bool ret = false;
     if (!initialized) {
         TRNG.begin();
         initialized = true;
     }
-    out = 0U;
-    if (TRNG.random8(&out) != 0) {
-        ret = true;
-    }
-    return ret;
+    uint8_t out = 0U;
+    TRNG.random8(&out);
+    return out;
 }

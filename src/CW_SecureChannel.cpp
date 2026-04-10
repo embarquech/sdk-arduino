@@ -532,7 +532,7 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
     // cppcheck-suppress misra-config
-    if (!CryptnoxUtils::secureCompare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
+    if (!CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
 #if CW_DEBUG_LOGGING
         _logger.println(F("MAC mismatch."));
 #endif
