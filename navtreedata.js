@@ -25,14 +25,6 @@
 var NAVTREE =
 [
   [ "cryptnox-sdk-arduino", "index.html", [
-    [ "Classes", "annotated.html", [
-      [ "Class List", "annotated.html", "annotated_dup" ],
-      [ "Class Index", "classes.html", null ],
-      [ "Class Members", "functions.html", [
-        [ "All", "functions.html", null ],
-        [ "Functions", "functions_func.html", null ]
-      ] ]
-    ] ],
     [ "Files", "files.html", [
       [ "File List", "files.html", "files_dup" ],
       [ "File Members", "globals.html", [
@@ -46,7 +38,7 @@ var NAVTREE =
 
 var NAVTREEINDEX =
 [
-"CryptnoxUtils_8cpp.html"
+"config_8template_8h.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

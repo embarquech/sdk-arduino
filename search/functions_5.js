@@ -1,5 +1,4 @@
 var searchData=
 [
-  ['secure_5fcompare_0',['secure_compare',['../classCryptnoxUtils.html#a6082b4da85e238414dde264494e03022',1,'CryptnoxUtils']]],
-  ['secure_5fwipe_1',['secure_wipe',['../classCryptnoxUtils.html#ad93cfa6e8ddd66aa747b192ae0361263',1,'CryptnoxUtils']]]
+  ['trimleadingzeros_0',['trimleadingzeros',['../util_8cpp.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp'],['../util_8h.html#ac0d038bb81b1ebdd5006ddc8c3823d92',1,'trimLeadingZeros(uint8_t *out, const uint8_t *in, size_t in_len):&#160;util.cpp']]]
 ];

@@ -1,6 +1,5 @@
 var searchData=
 [
-  ['uecc_5frng_5fcallback_0',['uECC_rng_callback',['../classCryptnoxUtils.html#a0f3fe157ddfdc1dc053e48470038c967',1,'CryptnoxUtils']]],
-  ['util_2ecpp_1',['util.cpp',['../util_8cpp.html',1,'']]],
-  ['util_2eh_2',['util.h',['../util_8h.html',1,'']]]
+  ['wifi_5fpassword_0',['WIFI_PASSWORD',['../config_8template_8h.html#a8685d8aff7e570048090a3a51afceb07',1,'config.template.h']]],
+  ['wifi_5fssid_1',['WIFI_SSID',['../config_8template_8h.html#a586542b79d00e4db7e1d5a667ae83a2b',1,'config.template.h']]]
 ];
