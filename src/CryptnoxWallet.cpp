@@ -130,12 +130,14 @@ void CryptnoxWallet::getCardInfo(CW_SecureSession& session) {
         return;
     }
     uint8_t data[] = { 0x00U };
-    uint8_t apdu[] = { 0x80U, 0xFAU, 0x00U, 0x00U };
+    uint8_t apdu[] = { CW_APDU_CLA, CW_APDU_INS_GET_CARD_INFO, 0x00U, 0x00U };
     _secure.aesCbcEncrypt(session, apdu, sizeof(apdu), data, sizeof(data));
 }
 
 // cppcheck-suppress unusedFunction
-void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength) {
+bool CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength) {
+    bool ret = false;
+
     if (!isSecureChannelOpen(session)) {
 #if CW_DEBUG_LOGGING
         _logger.println(F("Error: Secure channel not open. Cannot verify PIN."));
@@ -149,9 +151,12 @@ void CryptnoxWallet::verifyPin(CW_SecureSession& session, const uint8_t* pin, ui
     else {
         uint8_t paddedPin[CW_MAX_PIN_LENGTH] = { 0U };
         memcpy(paddedPin, pin, pinLength);
-        uint8_t apdu[] = { 0x80U, 0x20U, 0x00U, 0x00U };
-        _secure.aesCbcEncrypt(session, apdu, sizeof(apdu), paddedPin, CW_MAX_PIN_LENGTH);
+        uint8_t apdu[] = { CW_APDU_CLA, CW_APDU_INS_VERIFY_PIN, 0x00U, 0x00U };
+        ret = _secure.aesCbcEncrypt(session, apdu, sizeof(apdu), paddedPin, CW_MAX_PIN_LENGTH);
+        CryptnoxUtils::secure_wipe(paddedPin, sizeof(paddedPin));
     }
+
+    return ret;
 }
 
 // cppcheck-suppress unusedFunction
@@ -180,7 +185,7 @@ bool CryptnoxWallet::writeUserData(CW_SecureSession& session, uint8_t slot,
                 chunkSize = CW_USER_DATA_PAGE_SIZE;
             }
 
-            uint8_t apdu[] = { 0x80U, 0xFCU, slot, page };
+            uint8_t apdu[] = { CW_APDU_CLA, CW_APDU_INS_WRITE_USER_DATA, slot, page };
 
 #if CW_DEBUG_LOGGING
             _logger.print(F("Writing user data page "));
@@ -266,8 +271,11 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
             pos++;
             rLength = der[pos];
             pos++;
-            if ((pos + rLength) > derLength) {
-                /* r exceeds bounds */
+            if (rLength > 33U) {
+                /* r value too large for output buffer (max 33 bytes with optional padding) */
+            }
+            else if ((pos + rLength) > derLength) {
+                /* r exceeds DER bounds */
             }
             else {
                 memcpy(r, der + pos, rLength);
@@ -280,8 +288,11 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
                     pos++;
                     sLength = der[pos];
                     pos++;
-                    if ((pos + sLength) > derLength) {
-                        /* s exceeds bounds */
+                    if (sLength > 33U) {
+                        /* s value too large for output buffer (max 33 bytes with optional padding) */
+                    }
+                    else if ((pos + sLength) > derLength) {
+                        /* s exceeds DER bounds */
                     }
                     else {
                         memcpy(s, der + pos, sLength);
@@ -322,37 +333,73 @@ bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignR
     }
     else if ((request.hash == NULL) || (request.hashLength == 0U)) {
 #if CW_DEBUG_LOGGING
-        _logger.println(F("Error: Invalid parameters for sign."));
+        _logger.println(F("Error: hash pointer is NULL or hashLength is 0."));
 #endif
-        result.errorCode = CW_SIGN_KEY_TOO_SHORT;
+        result.errorCode = CW_SIGN_INVALID_HASH;
     }
     else if (request.hashLength > CW_HASH_SIZE) {
 #if CW_DEBUG_LOGGING
         _logger.println(F("Error: Hash too large."));
 #endif
-        result.errorCode = CW_SIGN_KEY_TOO_SHORT;
-    }
-    else if ((request.pinLessMode) && (request.keyType != CW_SIGN_PINLESS_K1)) {
-#if CW_DEBUG_LOGGING
-        _logger.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
-#endif
-        result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
+        result.errorCode = CW_SIGN_HASH_TOO_LARGE;
     }
     else {
-        ret = true;
-
-        if (!request.pinLessMode) {
-            uint8_t pinLength = 0U;
-            for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
-                if (request.pin[i] == 0U) { break; }
-                pinLength++;
-            }
-            if ((pinLength > 0U) && (pinLength < CW_MIN_PIN_LENGTH)) {
+        /* Validate keyType against the set of known values */
+        bool validKeyType = (request.keyType == CW_SIGN_CURR_K1)    ||
+                            (request.keyType == CW_SIGN_CURR_R1)    ||
+                            (request.keyType == CW_SIGN_DERIVE_K1)  ||
+                            (request.keyType == CW_SIGN_DERIVE_R1)  ||
+                            (request.keyType == CW_SIGN_PINLESS_K1);
+        if (!validKeyType) {
 #if CW_DEBUG_LOGGING
-                _logger.println(F("Error: PIN too short (must be 4-9 digits)."));
+            _logger.println(F("Error: Unknown keyType value."));
 #endif
-                result.errorCode = CW_SIGN_PIN_INCORRECT;
-                ret = false;
+            result.errorCode = CW_SIGN_INVALID_KEY_TYPE;
+        }
+        else if ((request.pinLessMode) && (request.keyType != CW_SIGN_PINLESS_K1)) {
+#if CW_DEBUG_LOGGING
+            _logger.println(F("Error: PIN-less mode requires CW_SIGN_PINLESS_K1 key type."));
+#endif
+            result.errorCode = CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE;
+        }
+        else {
+            /* DERIVE mode: derivePath must be non-null and length a multiple of 4 */
+            bool isDeriveMode = (request.keyType == CW_SIGN_DERIVE_K1) ||
+                                (request.keyType == CW_SIGN_DERIVE_R1);
+            if (isDeriveMode) {
+                if ((request.derivePath == NULL) || (request.derivePathLength == 0U)) {
+#if CW_DEBUG_LOGGING
+                    _logger.println(F("Error: DERIVE mode requires a non-null derivePath."));
+#endif
+                    result.errorCode = CW_SIGN_DERIVE_PATH_MISSING;
+                }
+                else if ((request.derivePathLength % 4U) != 0U) {
+#if CW_DEBUG_LOGGING
+                    _logger.println(F("Error: derivePathLength must be a multiple of 4 (BIP32)."));
+#endif
+                    result.errorCode = CW_SIGN_DERIVE_PATH_INVALID;
+                }
+                else {
+                    ret = true;
+                }
+            }
+            else {
+                ret = true;
+            }
+
+            if (ret && !request.pinLessMode) {
+                uint8_t pinLength = 0U;
+                for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
+                    if (request.pin[i] == 0U) { break; }
+                    pinLength++;
+                }
+                if ((pinLength > 0U) && (pinLength < CW_MIN_PIN_LENGTH)) {
+#if CW_DEBUG_LOGGING
+                    _logger.println(F("Error: PIN too short (must be 4-9 digits)."));
+#endif
+                    result.errorCode = CW_SIGN_PIN_INCORRECT;
+                    ret = false;
+                }
             }
         }
     }
@@ -388,7 +435,7 @@ bool CryptnoxWallet::sendSignApdu(CW_SignRequest& request, const uint8_t* data,
                                    uint16_t dataLength, uint8_t* derResponse,
                                    uint16_t& derLength, CW_SignResult& result) {
     bool ret = false;
-    uint8_t apdu[] = { 0x80U, 0xC0U, request.keyType, request.signatureType };
+    uint8_t apdu[] = { CW_APDU_CLA, CW_APDU_INS_SIGN, request.keyType, request.signatureType };
 
 #if CW_DEBUG_LOGGING
     _logger.println(F("Sending SIGN APDU..."));

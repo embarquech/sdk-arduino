@@ -37,8 +37,13 @@
 static_assert(APDU_HEADER_LEN + APDU_LC_LEN + AES_BLOCK_SIZE + ENC_BUF_MAX_LEN <= 255U,
               "CW_USER_DATA_PAGE_SIZE too large for PN532 single APDU transport");
 
-/* Shared static crypto scratch buffers — reuse is safe because decrypt is
- * always called from inside encrypt AFTER encrypt's large buffers are done. */
+/* Shared static crypto scratch buffers.
+ * Reuse is safe because aesCbcDecrypt is always called from inside aesCbcEncrypt
+ * AFTER aesCbcEncrypt's large buffers are no longer needed.
+ * SINGLE-THREADED ASSUMPTION: these module-level buffers are NOT re-entrant.
+ * They are safe only in the single-threaded Arduino execution environment.
+ * If multi-threading is ever introduced, guard each call-site with a mutex or
+ * replace these with stack-allocated locals. */
 static uint8_t s_apduBuf[SEND_APDU_MAX_LEN];  /* 245 bytes */
 static uint8_t s_macBuf [MAX_MAC_DATA_LEN];   /* 240 bytes */
 static uint8_t s_dataBuf[ENC_BUF_MAX_LEN];   /* 224 bytes */
@@ -186,7 +191,13 @@ bool CW_SecureChannel::getCardCertificate(uint8_t* cardCertificate, uint8_t& car
 
         if (_driver.sendAPDU(fullApdu, sizeof(fullApdu),
                              getCardCertificateResponse, getCardCertificateResponseLength)) {
-            if (checkStatusWord(getCardCertificateResponse, getCardCertificateResponseLength,
+            /* Bounds check: reject oversized responses before any buffer access — H4 */
+            if (getCardCertificateResponseLength > RESPONSE_GETCARDCERTIFICATE_IN_BYTES) {
+#if CW_DEBUG_LOGGING
+                _logger.println(F("getCardCertificate: response exceeds buffer size."));
+#endif
+            }
+            else if (checkStatusWord(getCardCertificateResponse, getCardCertificateResponseLength,
                                 0x90U, 0x00U)) {
                 cardCertificateLength = getCardCertificateResponseLength - RESPONSE_STATUS_WORDS_IN_BYTES;
                 CryptnoxUtils::safe_memcpy(cardCertificate, GETCARDCERTIFICATE_IN_BYTES,
@@ -259,7 +270,13 @@ bool CW_SecureChannel::openSecureChannel(uint8_t* salt,
         uint8_t responseLength = sizeof(response);
 
         if (_driver.sendAPDU(fullApdu, sizeof(fullApdu), response, responseLength)) {
-            if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
+            /* Explicit upper-bound check before any buffer access — C2 */
+            if (responseLength > RESPONSE_OPENSECURECHANNEL_IN_BYTES) {
+#if CW_DEBUG_LOGGING
+                _logger.println(F("OpenSecureChannel: response exceeds buffer size."));
+#endif
+            }
+            else if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
                 if (responseLength == RESPONSE_OPENSECURECHANNEL_IN_BYTES) {
                     memcpy(salt, response, OPENSECURECHANNEL_SALT_IN_BYTES);
                     ret = true;
@@ -317,7 +334,11 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
         memset(iv_opc, 0x01U, AES_BLOCK_SIZE);
 
         uint8_t RNG_data[32U] = { 0U };
-        // cppcheck-suppress misra-config
+        /* cppcheck-suppress misra-config
+         * MISRA-C:2012 Rule 15.5: function has more than one point of exit.
+         * Early return is intentional here to immediately release sensitive
+         * key material (sharedSecret, sha512Output) on RNG failure without
+         * adding a deeply nested else branch. */
         if (!_crypto.random(RNG_data, sizeof(RNG_data))) {
 #if CW_DEBUG_LOGGING
             _logger.println(F("RNG failed."));
@@ -376,11 +397,17 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
         offset += sizeof(MAC_value);
         memcpy(sendApduOpc + offset, ciphertextOPC, cipherLength);
 
-        uint8_t response[255U] = { 0U };
+        uint8_t response[RESPONSE_MUTUALLYAUTHENTICATE_IN_BYTES] = { 0U };
         uint8_t responseLength = sizeof(response);
 
         if (_driver.sendAPDU(sendApduOpc, sizeof(sendApduOpc), response, responseLength)) {
-            if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
+            /* Explicit upper-bound check before any buffer access — C2/M3 */
+            if (responseLength > RESPONSE_MUTUALLYAUTHENTICATE_IN_BYTES) {
+#if CW_DEBUG_LOGGING
+                _logger.println(F("MutualAuth: response exceeds buffer size."));
+#endif
+            }
+            else if (checkStatusWord(response, responseLength, 0x90U, 0x00U)) {
                 if (responseLength == RESPONSE_MUTUALLYAUTHENTICATE_IN_BYTES) {
                     memcpy(session.iv, response, CW_IV_SIZE);
                     ret = true;
@@ -472,7 +499,7 @@ bool CW_SecureChannel::aesCbcEncrypt(CW_SecureSession& session,
     memcpy(s_apduBuf + offset, s_dataBuf, encryptedLength);
 
     /* 4. Send APDU */
-    uint8_t response[255U] = { 0U };
+    uint8_t response[CW_MAX_APDU_RESPONSE_BYTES] = { 0U };
     uint8_t responseLength = sizeof(response);
 
     if (_driver.sendAPDU(s_apduBuf, sendApduLength, response, responseLength)) {
@@ -531,7 +558,10 @@ bool CW_SecureChannel::aesCbcDecrypt(CW_SecureSession& session,
     uint16_t macOffset = macEncryptedLength - AES_BLOCK_SIZE;
     memcpy(recomputedMacValue, s_apduBuf + macOffset, AES_BLOCK_SIZE);
 
-    // cppcheck-suppress misra-config
+    /* cppcheck-suppress misra-config
+     * MISRA-C:2012 Rule 15.5: function has more than one point of exit.
+     * Early return on MAC mismatch is intentional to prevent any further
+     * processing of unauthenticated ciphertext. */
     if (!CryptnoxUtils::secure_compare(rep_mac, recomputedMacValue, AES_BLOCK_SIZE)) {
 #if CW_DEBUG_LOGGING
         _logger.println(F("MAC mismatch."));
