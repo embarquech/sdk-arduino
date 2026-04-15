@@ -38,10 +38,15 @@
 #define CW_SIGN_SIG_SCHNORR_BIP340    (0x02U)  /**< Schnorr BIP340 */
 
 /* SIGN-specific error codes */
-#define CW_SIGN_KEY_TOO_SHORT                  (0x80U)
-#define CW_SIGN_NO_KEY_LOADED                  (0x81U)
-#define CW_SIGN_PIN_INCORRECT                  (0x82U)
-#define CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE (0x83U)
+#define CW_SIGN_KEY_TOO_SHORT                  (0x80U)  /**< Legacy: hash missing or too large */
+#define CW_SIGN_NO_KEY_LOADED                  (0x81U)  /**< Card has no key loaded */
+#define CW_SIGN_PIN_INCORRECT                  (0x82U)  /**< PIN rejected by card */
+#define CW_SIGN_KEY_TOO_SHORT_WITH_PINLESS_MODE (0x83U) /**< PIN-less mode requires CW_SIGN_PINLESS_K1 */
+#define CW_SIGN_INVALID_HASH                   (0x84U)  /**< hash pointer is NULL or hashLength is 0 */
+#define CW_SIGN_HASH_TOO_LARGE                 (0x85U)  /**< hashLength exceeds CW_HASH_SIZE */
+#define CW_SIGN_INVALID_KEY_TYPE               (0x86U)  /**< keyType is not a recognised CW_SIGN_* value */
+#define CW_SIGN_DERIVE_PATH_MISSING            (0x87U)  /**< DERIVE mode selected but derivePath is NULL/empty */
+#define CW_SIGN_DERIVE_PATH_INVALID            (0x88U)  /**< derivePathLength is not a multiple of 4 bytes */
 
 /* Size constants */
 #define CW_RAW_SIGNATURE_SIZE         (64U)    /**< Raw signature (r[32] + s[32]) */
@@ -55,9 +60,21 @@
 #define CW_USER_DATA_PAGE_SIZE        (208U)   /**< Max plaintext bytes per write user data page */
 #define CW_CONNECT_MAX_ATTEMPTS        (5U)    /**< Max NFC connection retry attempts */
 
+/* APDU class and instruction byte constants (Cryptnox card protocol) */
+#define CW_APDU_CLA                   (0x80U)  /**< Proprietary class byte for all Cryptnox APDUs */
+#define CW_APDU_INS_GET_CARD_INFO     (0xFAU)  /**< INS: GET CARD INFO */
+#define CW_APDU_INS_VERIFY_PIN        (0x20U)  /**< INS: VERIFY PIN */
+#define CW_APDU_INS_WRITE_USER_DATA   (0xFCU)  /**< INS: WRITE USER DATA */
+#define CW_APDU_INS_SIGN              (0xC0U)  /**< INS: SIGN */
+
+/* Maximum raw APDU response payload the PN532 can return (ISO 7816-4 / PN532 limit) */
+#define CW_MAX_APDU_RESPONSE_BYTES    (255U)
+
 /* DER encoding tags (ASN.1) */
 #define CW_DER_TAG_SEQUENCE           (0x30U)
 #define CW_DER_TAG_INTEGER            (0x02U)
+/* Max DER INTEGER component for secp256k1/r1: 32 bytes + 1 optional leading 0x00 padding */
+#define CW_DER_MAX_COMPONENT_LEN      (33U)
 
 /* Certificate verification constants */
 #define CW_CERT_NONCE_SIZE            (8U)     /**< Challenge nonce length in bytes */

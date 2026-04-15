@@ -5,6 +5,7 @@
 #include <Adafruit_PN532.h>
 #include "CW_NfcTransport.h"
 #include "CW_Logger.h"
+#include "CW_Defs.h"
 
 /**
  * @brief Enum representing the supported communication interfaces for the PN532 NFC module.

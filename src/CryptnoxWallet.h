@@ -127,8 +127,9 @@ public:
      * @param[in,out] session   Valid secure session.
      * @param[in]     pin       PIN bytes (ASCII digits, 4–9 characters).
      * @param[in]     pinLength Length of the PIN.
+     * @return true if the card accepted the PIN, false otherwise.
      */
-    void verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength);
+    bool verifyPin(CW_SecureSession& session, const uint8_t* pin, uint8_t pinLength);
 
     /**
      * @brief Sign a hash using the card's stored key.

@@ -100,7 +100,15 @@ bool PN532Adapter::sendAPDU(const uint8_t* apdu, uint16_t apduLength,
                             uint8_t* response, uint8_t &responseLength) {
     bool ret = false;
     if ((nfc != NULL) && (serial != NULL) && (apdu != NULL) && (response != NULL)) {
-        bool success = nfc->inDataExchange(const_cast<uint8_t*>(apdu), apduLength, response, &responseLength);
+        /* inDataExchange() requires a mutable buffer. Copy apdu into a local
+         * writable buffer to avoid const_cast and potential silent corruption — C4. */
+        if (apduLength > CW_MAX_APDU_RESPONSE_BYTES) {
+            serial->println(F("APDU too large for PN532!"));
+            return false;
+        }
+        uint8_t apduBuf[CW_MAX_APDU_RESPONSE_BYTES];
+        memcpy(apduBuf, apdu, apduLength);
+        bool success = nfc->inDataExchange(apduBuf, apduLength, response, &responseLength);
 
         if (!success) {
             serial->println(F("APDU exchange failed!"));
