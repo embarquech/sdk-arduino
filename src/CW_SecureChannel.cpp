@@ -320,14 +320,22 @@ bool CW_SecureChannel::mutuallyAuthenticate(CW_SecureSession& session,
         const size_t pairingKeyLen = sizeof(COMMON_PAIRING_DATA) - 1U;
         const size_t concatLen    = 32U + pairingKeyLen + 32U;
 
-        memcpy(concat, sharedSecret, 32U);
-        memcpy(concat + 32U, COMMON_PAIRING_DATA, pairingKeyLen);
-        memcpy(concat + 32U + pairingKeyLen, salt, 32U);
+        (void)CryptnoxUtils::safe_memcpy(concat, sizeof(concat),
+                                         sharedSecret, CLIENT_PRIVATE_KEY_SIZE);
+        (void)CryptnoxUtils::safe_memcpy(concat + CLIENT_PRIVATE_KEY_SIZE,
+                                         sizeof(concat) - CLIENT_PRIVATE_KEY_SIZE,
+                                         reinterpret_cast<const uint8_t*>(COMMON_PAIRING_DATA),
+                                         pairingKeyLen);
+        (void)CryptnoxUtils::safe_memcpy(concat + CLIENT_PRIVATE_KEY_SIZE + pairingKeyLen,
+                                         sizeof(concat) - CLIENT_PRIVATE_KEY_SIZE - pairingKeyLen,
+                                         salt, CLIENT_PRIVATE_KEY_SIZE);
 
         _crypto.sha512(concat, concatLen, sha512Output);
 
-        memcpy(session.aesKey, sha512Output, CW_AESKEY_SIZE);
-        memcpy(session.macKey, sha512Output + CW_AESKEY_SIZE, CW_MACKEY_SIZE);
+        (void)CryptnoxUtils::safe_memcpy(session.aesKey, CW_AESKEY_SIZE,
+                                         sha512Output, CW_AESKEY_SIZE);
+        (void)CryptnoxUtils::safe_memcpy(session.macKey, CW_MACKEY_SIZE,
+                                         sha512Output + CW_AESKEY_SIZE, CW_MACKEY_SIZE);
 
         uint8_t iv_opc[AES_BLOCK_SIZE] = { 0U };
         uint8_t mac_iv[AES_BLOCK_SIZE] = { 0U };

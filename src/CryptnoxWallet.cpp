@@ -271,14 +271,14 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
             pos++;
             rLength = der[pos];
             pos++;
-            if (rLength > 33U) {
+            if (rLength > CW_DER_MAX_COMPONENT_LEN) {
                 /* r value too large for output buffer (max 33 bytes with optional padding) */
             }
             else if ((pos + rLength) > derLength) {
                 /* r exceeds DER bounds */
             }
             else {
-                memcpy(r, der + pos, rLength);
+                (void)CryptnoxUtils::safe_memcpy(r, CW_DER_MAX_COMPONENT_LEN, der + pos, rLength);
                 pos += rLength;
 
                 if ((pos >= derLength) || (der[pos] != CW_DER_TAG_INTEGER)) {
@@ -288,14 +288,14 @@ bool CryptnoxWallet::parseDerSignature(const uint8_t* der, uint8_t derLength,
                     pos++;
                     sLength = der[pos];
                     pos++;
-                    if (sLength > 33U) {
+                    if (sLength > CW_DER_MAX_COMPONENT_LEN) {
                         /* s value too large for output buffer (max 33 bytes with optional padding) */
                     }
                     else if ((pos + sLength) > derLength) {
                         /* s exceeds DER bounds */
                     }
                     else {
-                        memcpy(s, der + pos, sLength);
+                        (void)CryptnoxUtils::safe_memcpy(s, CW_DER_MAX_COMPONENT_LEN, der + pos, sLength);
                         ret = true;
                     }
                 }
@@ -390,7 +390,9 @@ bool CryptnoxWallet::validateSignRequest(const CW_SignRequest& request, CW_SignR
             if (ret && !request.pinLessMode) {
                 uint8_t pinLength = 0U;
                 for (uint8_t i = 0U; i < CW_MAX_PIN_LENGTH; i++) {
-                    if (request.pin[i] == 0U) { break; }
+                    if (request.pin[i] == 0U) {
+                        break;
+                    }
                     pinLength++;
                 }
                 if ((pinLength > 0U) && (pinLength < CW_MIN_PIN_LENGTH)) {

@@ -73,6 +73,8 @@
 /* DER encoding tags (ASN.1) */
 #define CW_DER_TAG_SEQUENCE           (0x30U)
 #define CW_DER_TAG_INTEGER            (0x02U)
+/* Max DER INTEGER component for secp256k1/r1: 32 bytes + 1 optional leading 0x00 padding */
+#define CW_DER_MAX_COMPONENT_LEN      (33U)
 
 /* Certificate verification constants */
 #define CW_CERT_NONCE_SIZE            (8U)     /**< Challenge nonce length in bytes */
