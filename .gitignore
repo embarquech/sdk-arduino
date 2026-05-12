@@ -1,2 +1,5 @@
 # Sensitive configuration — never commit
 examples/usdc_signing/config.h
+
+# IDE
+.vscode/

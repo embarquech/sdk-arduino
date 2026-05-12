@@ -282,8 +282,14 @@ void sendRawTx(const uint8_t* raw, size_t len) {
         bool txSent = statusOk && noJsonError;
         client.stop();
         if (txSent) {
+            Serial.print(F("TX sent: "));
+            Serial.println(responseBody);
             break;
         }
+        Serial.print(F("sendRawTx failed (HTTP "));
+        Serial.print(status);
+        Serial.print(F("): "));
+        Serial.println(responseBody);
     }
 }
 
