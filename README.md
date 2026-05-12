@@ -27,9 +27,41 @@ Get your cards here: [shop.cryptnox.com](https://shop.cryptnox.com)
 
 ## Installation
 
+### Automatic setup (recommended)
+
 1. Download or clone this repository.
-2. Copy all the library folders from `libraries` directory into your Arduino `libraries` directory.
-3. Restart the Arduino IDE to detect the library.
+2. Run the setup script for your platform — it will back up your existing Arduino libraries, install this SDK, and download all required dependencies:
+
+   **Windows:**
+   ```bat
+   setup.bat
+   ```
+
+   **Linux / macOS:**
+   ```sh
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
+   The script tries `arduino-cli` first; if it is not found it falls back to `git clone`.  
+   You can pass a custom Arduino libraries path as the first argument:
+
+   **Windows:** `setup.bat "D:\Arduino\libraries"`  
+   **Linux / macOS:** `./setup.sh "/custom/path/to/Arduino/libraries"`
+
+3. Restart the Arduino IDE.
+
+### Required libraries
+
+The following libraries are installed automatically by the setup script:
+
+| Library | Version | Source |
+|---------|---------|--------|
+| AESLib | 2.3.6 | Arduino Library Manager / [GitHub](https://github.com/suculent/thinx-aes-lib) |
+| Adafruit BusIO | 1.17.4 | Arduino Library Manager / [GitHub](https://github.com/adafruit/Adafruit_BusIO) |
+| Adafruit PN532 | 1.3.4 | Arduino Library Manager / [GitHub](https://github.com/adafruit/Adafruit-PN532) |
+| Crypto | 0.4.0 | Arduino Library Manager / [GitHub](https://github.com/rweather/arduinolibs) |
+| micro-ecc | 1.0.0 | Arduino Library Manager / [GitHub](https://github.com/kmackay/micro-ecc) |
 
 ## Hardware setup
 
